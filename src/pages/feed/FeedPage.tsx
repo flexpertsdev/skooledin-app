@@ -85,9 +85,9 @@ export function FeedPage() {
   });
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
+    <div className="h-full w-full flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
+      <div className="bg-white border-b border-gray-200 px-4 py-3 w-full">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Feed</h1>
           <div className="flex gap-2">
@@ -124,14 +124,14 @@ export function FeedPage() {
       </div>
 
       {/* Feed Items */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto w-full">
         {filteredItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <p className="text-lg">No items to show</p>
             <p className="text-sm mt-2">Check back later for updates</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-200 w-full">
             {filteredItems.map(item => (
               <FeedItem
                 key={item.id}
