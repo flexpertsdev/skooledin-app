@@ -1,5 +1,25 @@
 @import "tailwindcss";
-@config "../tailwind.config.js";
+
+@theme {
+  --color-brand-primary: #7c3aed;
+  --color-brand-darker: #6d28d9;
+  --color-brand-light: #f3e8ff;
+  --color-brand-surface: #faf5ff;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+  --color-destructive: #dc2626;
+  --color-subject-math: #3b82f6;
+  --color-subject-science: #10b981;
+  --color-subject-language: #f59e0b;
+  --color-subject-history: #a78bfa;
+  --color-subject-arts: #ec4899;
+  --color-subject-sports: #14b8a6;
+  
+  --height-touch: 44px;
+  --height-touch-lg: 56px;
+}
 
 @layer base {
   * {
@@ -22,7 +42,7 @@
            active:scale-95 active:bg-brand-darker
            transition-all duration-150
            disabled:opacity-50 disabled:cursor-not-allowed
-           min-h-touch
+           min-h-[44px]
            hover:bg-brand-darker
            focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2;
   }
@@ -33,7 +53,7 @@
            border border-gray-200
            active:scale-95 active:bg-gray-50
            transition-all duration-150
-           min-h-touch;
+           min-h-[44px];
   }
 
   .btn-ghost {
@@ -41,7 +61,7 @@
            px-4 py-2 rounded-lg
            active:bg-gray-100
            transition-all duration-150
-           min-h-touch;
+           min-h-[44px];
   }
 
   .card {
@@ -50,7 +70,8 @@
   }
 
   .card-interactive {
-    @apply card active:scale-[0.98] transition-transform duration-150
+    @apply bg-white rounded-2xl p-4 shadow-sm border border-gray-100
+           md:p-6 active:scale-[0.98] transition-transform duration-150
            cursor-pointer;
   }
 
@@ -59,7 +80,7 @@
            bg-white text-gray-900 placeholder-gray-400
            focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20
            focus:outline-none transition-all duration-150
-           min-h-touch;
+           min-h-[44px];
   }
 
   .label {
