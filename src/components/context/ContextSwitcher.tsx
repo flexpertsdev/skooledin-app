@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@stores/auth';
 import { useState } from 'react';
-import { Context } from '@types';
+import type { Context } from '@types';
 
 export function ContextSwitcher() {
   const { currentContext, setContext } = useAuthStore();

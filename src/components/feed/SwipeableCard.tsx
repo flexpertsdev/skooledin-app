@@ -1,5 +1,7 @@
-import { motion, useAnimation, PanInfo } from 'framer-motion';
-import { ReactNode, useState } from 'react';
+import { motion, useAnimation } from 'framer-motion';
+import type { PanInfo } from 'framer-motion';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
 
 interface SwipeAction {
   label: string;
@@ -29,7 +31,6 @@ export function SwipeableCard({
 
   const handleDragEnd = async (_: any, info: PanInfo) => {
     const offset = info.offset.x;
-    const velocity = info.velocity.x;
 
     if (offset > threshold && onSwipeRight) {
       await controls.start({ x: '100%', opacity: 0 });

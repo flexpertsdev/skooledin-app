@@ -4,7 +4,8 @@ import { FeedItem } from '@components/feed/FeedItem';
 import { Button } from '@components/common/Button';
 import { Plus, Filter } from 'lucide-react';
 import { useAuthStore } from '@stores/auth';
-import { FeedItem as FeedItemType, FeedItemType as FeedType, UserRole } from '@types';
+import type { FeedItem as FeedItemType } from '@types';
+import { FeedItemType as FeedType, UserRole } from '@types';
 
 // Mock data
 const mockFeedItems: FeedItemType[] = [
@@ -113,8 +114,8 @@ export function FeedPage() {
                 <div className="bg-white rounded-2xl shadow-sm p-8">
                   <h1 className="text-2xl font-bold mb-4">{selectedItem.title}</h1>
                   <p className="text-gray-600">
-                    {'description' in selectedItem ? selectedItem.description : 
-                     'content' in selectedItem ? selectedItem.content : 
+                    {'description' in selectedItem && selectedItem.description ? String(selectedItem.description) : 
+                     'content' in selectedItem && selectedItem.content ? String(selectedItem.content) : 
                      'Grade details would appear here'}
                   </p>
                 </div>

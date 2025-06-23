@@ -1,9 +1,11 @@
 // User Types
-export enum UserRole {
-  STUDENT = 'student',
-  TEACHER = 'teacher',
-  PARENT = 'parent'
-}
+export const UserRole = {
+  STUDENT: 'student',
+  TEACHER: 'teacher',
+  PARENT: 'parent'
+} as const;
+
+export type UserRole = typeof UserRole[keyof typeof UserRole];
 
 export interface BaseUser {
   id: string;
@@ -16,7 +18,7 @@ export interface BaseUser {
 }
 
 export interface Student extends BaseUser {
-  role: UserRole.STUDENT;
+  role: typeof UserRole.STUDENT;
   grade: number;
   school: School;
   subjects: Subject[];
@@ -24,14 +26,14 @@ export interface Student extends BaseUser {
 }
 
 export interface Teacher extends BaseUser {
-  role: UserRole.TEACHER;
+  role: typeof UserRole.TEACHER;
   school: School;
   subjects: Subject[];
   classes: Class[];
 }
 
 export interface Parent extends BaseUser {
-  role: UserRole.PARENT;
+  role: typeof UserRole.PARENT;
   children: Student[];
   subscription: Subscription;
 }
@@ -84,11 +86,13 @@ export interface Subscription {
 }
 
 // Feed Types
-export enum FeedItemType {
-  ASSIGNMENT = 'assignment',
-  ANNOUNCEMENT = 'announcement',
-  GRADE = 'grade'
-}
+export const FeedItemType = {
+  ASSIGNMENT: 'assignment',
+  ANNOUNCEMENT: 'announcement',
+  GRADE: 'grade'
+} as const;
+
+export type FeedItemType = typeof FeedItemType[keyof typeof FeedItemType];
 
 export interface FeedItem {
   id: string;
@@ -102,7 +106,7 @@ export interface FeedItem {
 }
 
 export interface Assignment extends FeedItem {
-  type: FeedItemType.ASSIGNMENT;
+  type: typeof FeedItemType.ASSIGNMENT;
   description: string;
   dueDate: Date;
   points: number;
@@ -112,7 +116,7 @@ export interface Assignment extends FeedItem {
 }
 
 export interface Announcement extends FeedItem {
-  type: FeedItemType.ANNOUNCEMENT;
+  type: typeof FeedItemType.ANNOUNCEMENT;
   content: string;
   important: boolean;
   expiresAt?: Date;
@@ -120,7 +124,7 @@ export interface Announcement extends FeedItem {
 }
 
 export interface Grade extends FeedItem {
-  type: FeedItemType.GRADE;
+  type: typeof FeedItemType.GRADE;
   assignment: Assignment;
   student: Student;
   score: number;

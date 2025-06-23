@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import { ChevronRight, Clock, FileText, Megaphone, GraduationCap } from 'lucide-react';
 import { SwipeableCard } from './SwipeableCard';
-import { FeedItem as FeedItemType, FeedItemType as FeedType } from '@types';
+import type { FeedItem as FeedItemType } from '@types';
+import { FeedItemType as FeedType } from '@types';
 import { format } from 'date-fns';
 
 interface FeedItemProps {
@@ -34,12 +35,7 @@ export function FeedItem({ item, onArchive, onMarkRead, onClick }: FeedItemProps
     }
   };
 
-  const getSubtitle = () => {
-    if (item.type === FeedType.ASSIGNMENT && 'dueDate' in item) {
-      return `Due ${format(new Date(item.dueDate), 'MMM d, h:mm a')}`;
-    }
-    return format(new Date(item.createdAt), 'MMM d, h:mm a');
-  };
+  // Remove unused getSubtitle function - subtitle logic is inlined below
 
   const getBadges = () => {
     const badges = [];
@@ -91,8 +87,8 @@ export function FeedItem({ item, onArchive, onMarkRead, onClick }: FeedItemProps
           </div>
           
           <p className="text-sm text-gray-600 truncate">
-            {'description' in item ? item.description : 
-             'content' in item ? item.content : 
+            {'description' in item && item.description ? String(item.description) : 
+             'content' in item && item.content ? String(item.content) : 
              'From ' + item.createdBy.name}
           </p>
           

@@ -1,4 +1,4 @@
-import { Search, Plus, Folder, FileText } from 'lucide-react';
+import { Search, Plus, FileText } from 'lucide-react';
 import { Card } from '@components/common/Card';
 import { Button } from '@components/common/Button';
 

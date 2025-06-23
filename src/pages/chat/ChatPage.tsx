@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Paperclip, Mic, MoreVertical } from 'lucide-react';
 import { Button } from '@components/common/Button';
-import { ChatMessage } from '@types';
+import type { ChatMessage } from '@types';
 
 export function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
