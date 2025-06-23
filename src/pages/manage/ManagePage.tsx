@@ -36,7 +36,7 @@ export function ManagePage() {
   ];
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 p-4">
+    <div className="overflow-y-auto bg-gray-50 p-4">
       <h1 className="text-2xl font-bold mb-6">Classroom Management</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

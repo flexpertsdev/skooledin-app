@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  /* 🎨 Colors - Preserved from original theme */
   --color-brand-primary: #7c3aed;
   --color-brand-darker: #6d28d9;
   --color-brand-light: #f3e8ff;
@@ -17,21 +18,142 @@
   --color-subject-arts: #ec4899;
   --color-subject-sports: #14b8a6;
   
+  /* 📱 Mobile-First Breakpoints */
+  --breakpoint-xs: 375px;
+  --breakpoint-mobile: 767px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1024px;
+  --breakpoint-standalone: (display-mode: standalone);
+  --breakpoint-pwa: (display-mode: standalone);
+  --breakpoint-tall: (min-height: 800px);
+  --breakpoint-short: (max-height: 700px);
+  --breakpoint-landscape: (orientation: landscape);
+  --breakpoint-portrait: (orientation: portrait);
+  
+  /* 📏 Mobile-Optimized Spacing */
+  --spacing-safe-top: env(safe-area-inset-top);
+  --spacing-safe-bottom: env(safe-area-inset-bottom);
+  --spacing-safe-left: env(safe-area-inset-left);
+  --spacing-safe-right: env(safe-area-inset-right);
+  --spacing-touch: 44px;
+  --spacing-touch-sm: 40px;
+  --spacing-touch-lg: 48px;
+  --spacing-header: 56px;
+  --spacing-toolbar: 48px;
+  --spacing-fab: 56px;
+  --spacing-tab: 48px;
+  
+  /* 📐 Modern Viewport Units */
   --height-touch: 44px;
   --height-touch-lg: 56px;
+  --height-dvh: 100dvh;
+  --height-svh: 100svh;
+  --height-lvh: 100lvh;
+  --height-screen-safe: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  
+  /* 📱 Mobile-Optimized Fonts */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --text-mobile-h1: 1.75rem;
+  --text-mobile-h2: 1.5rem;
+  --text-mobile-h3: 1.25rem;
+  --text-touch: 1.125rem;
+  
+  /* 🎨 Mobile Design Tokens */
+  --radius-mobile: 12px;
+  --radius-card: 16px;
+  --radius-sheet: 20px;
+  --radius-fab: 28px;
+  --radius-pill: 9999px;
+  
+  /* 🎬 Mobile Animation Timing */
+  --ease-mobile: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-ios: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  
+  /* 📊 Z-Index Scale */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+  --z-fab: 1090;
 }
 
 @layer base {
+  /* 🎯 Mobile-First Reset */
+  :root {
+    /* PWA Variables */
+    --header-height: 56px;
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+  }
+
   * {
     -webkit-tap-highlight-color: transparent;
   }
 
   html {
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
     overscroll-behavior: none;
   }
 
   body {
-    @apply antialiased;
+    @apply antialiased bg-white text-gray-900;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  #root {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    position: relative;
+    /* Remove Vite defaults */
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    text-align: left;
+  }
+
+  /* Touch-optimized elements */
+  button, input, textarea, select {
+    touch-action: manipulation;
+    -webkit-appearance: none;
+    font-family: inherit;
+  }
+
+  button {
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded;
+  }
+
+  /* Prevent iOS bounce on fixed elements */
+  .ios-bounce-disable {
+    -webkit-overflow-scrolling: auto;
+    overscroll-behavior: none;
   }
 }
 
@@ -106,14 +228,250 @@
   .badge-info {
     @apply bg-info text-white;
   }
+
+  /* 📱 PWA Layout Components */
+  .pwa-header {
+    height: var(--header-height);
+    padding-top: var(--safe-area-top);
+    @apply bg-white border-b sticky top-0 z-[1020];
+  }
+
+  .pwa-main {
+    @apply flex-1 overflow-y-auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .pwa-bottom-nav {
+    padding-bottom: var(--safe-area-bottom);
+    @apply bg-white border-t sticky bottom-0 z-[1020];
+  }
+
+  /* 🎯 Mobile Components */
+  .fab {
+    @apply fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-[1090];
+    transform: translateZ(0);
+  }
+
+  .message-bubble {
+    @apply max-w-xs rounded-2xl px-4 py-2;
+    word-wrap: break-word;
+  }
+
+  .card-mobile {
+    @apply bg-white rounded-2xl border shadow-sm;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
 }
 
 @layer utilities {
+  /* 📱 Safe Area Utilities */
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }
 
   .pt-safe {
     padding-top: env(safe-area-inset-top);
+  }
+  
+  .px-safe {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .safe-x {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .safe-y {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-all {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* 📏 Modern Viewport Units */
+  .h-dvh {
+    height: 100dvh;
+  }
+  
+  .min-h-dvh {
+    min-height: 100dvh;
+  }
+  
+  .max-h-dvh {
+    max-height: 100dvh;
+  }
+  
+  .h-svh {
+    height: 100svh;
+  }
+  
+  .h-lvh {
+    height: 100lvh;
+  }
+  
+  .full-height {
+    height: 100vh;
+    height: 100dvh;
+  }
+  
+  .safe-height {
+    height: calc(100vh - var(--safe-area-top) - var(--safe-area-bottom));
+    height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom));
+  }
+
+  /* 🎯 Touch Interaction */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  .touch-none {
+    touch-action: none;
+  }
+  
+  .touch-pan-x {
+    touch-action: pan-x;
+  }
+  
+  .touch-pan-y {
+    touch-action: pan-y;
+  }
+
+  /* 📜 Scrolling Optimizations */
+  .scroll-smooth-mobile {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .overscroll-none {
+    overscroll-behavior: none;
+  }
+  
+  .overscroll-contain {
+    overscroll-behavior: contain;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* 🎨 Mobile Selection */
+  .select-none-mobile {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* ⚡ Performance */
+  .gpu {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+  
+  .gpu-scroll {
+    transform: translateZ(0);
+    will-change: scroll-position;
+  }
+}
+
+/* 🎬 Mobile Animations */
+@keyframes slide-up {
+  0% { transform: translateY(100%); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  0% { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* 🎯 Animation Classes */
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-in-out;
+}
+
+.animate-bounce-gentle {
+  animation: bounce-gentle 1s ease-in-out infinite;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* 📱 Responsive Optimizations */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (display-mode: standalone) {
+  .pwa-header {
+    padding-top: calc(var(--safe-area-top) + 8px);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .pwa-header {
+    height: 48px;
   }
 }

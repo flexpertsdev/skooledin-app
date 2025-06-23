@@ -77,7 +77,7 @@ export function ChatPage() {
             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+              className={`message-bubble max-w-[70%] sm:max-w-[80%] ${
                 message.role === 'user'
                   ? 'bg-brand-primary text-white rounded-br-md'
                   : 'bg-white text-gray-900 rounded-bl-md shadow-sm'
@@ -112,7 +112,7 @@ export function ChatPage() {
       </div>
 
       {/* Input */}
-      <div className="bg-white border-t border-gray-200 px-4 py-3">
+      <div className="bg-white border-t border-gray-200 px-4 py-3 safe-bottom">
         <div className="flex items-end gap-2">
           <button className="p-2 hover:bg-gray-100 rounded-lg">
             <Paperclip size={20} className="text-gray-600" />

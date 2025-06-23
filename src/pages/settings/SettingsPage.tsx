@@ -35,9 +35,9 @@ export function SettingsPage() {
   ];
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50">
+    <div className="overflow-y-auto bg-gray-50">
       {/* Profile Header */}
-      <div className="bg-white p-6 border-b border-gray-200">
+      <div className="bg-white p-4 sm:p-6 border-b border-gray-200">
         <div className="flex items-center gap-4">
           {user?.avatar ? (
             <img
@@ -59,7 +59,7 @@ export function SettingsPage() {
       </div>
 
       {/* Settings Groups */}
-      <div className="p-4 space-y-6">
+      <div className="p-4 space-y-6 max-w-2xl mx-auto">
         {settingsGroups.map((group) => (
           <div key={group.title}>
             <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider px-2 mb-2">

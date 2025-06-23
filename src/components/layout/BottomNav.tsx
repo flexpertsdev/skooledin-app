@@ -14,7 +14,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe">
+    <nav className="pwa-bottom-nav">
       <div className="flex justify-around items-center h-16">
         {navItems.map(({ icon: Icon, label, path }) => (
           <NavLink
@@ -22,7 +22,7 @@ export function BottomNav() {
             to={path}
             className={({ isActive }) => `
               flex flex-col items-center gap-1 py-2 px-3 rounded-lg
-              min-w-[64px] transition-colors select-none
+              min-w-[64px] transition-colors select-none-mobile touch-manipulation
               ${isActive 
                 ? 'text-brand-primary' 
                 : 'text-gray-500 active:bg-gray-50'

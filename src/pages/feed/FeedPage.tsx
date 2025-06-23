@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useMediaQuery } from '@hooks/useMediaQuery';
 import { FeedItem } from '@components/feed/FeedItem';
 import { Button } from '@components/common/Button';
 import { Plus, Filter } from 'lucide-react';
@@ -56,7 +55,6 @@ const mockFeedItems: FeedItemType[] = [
 ];
 
 export function FeedPage() {
-  const isDesktop = useMediaQuery('(min-width: 1280px)');
   const [selectedItem, setSelectedItem] = useState<FeedItemType | null>(null);
   const [feedItems, setFeedItems] = useState(mockFeedItems);
   const userRole = useAuthStore(s => s.user?.role);
@@ -73,9 +71,52 @@ export function FeedPage() {
     );
   };
 
-  if (isDesktop) {
-    return (
-      <div className="h-full flex">
+  return (
+    <>
+      {/* Mobile View - Default */}
+      <div className="h-full overflow-y-auto bg-gray-50 xl:hidden">
+        {/* Sticky header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold">Feed</h1>
+            <button className="p-2 hover:bg-gray-100 rounded-lg touch-manipulation">
+              <Filter size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Feed items */}
+        <div className="divide-y divide-gray-100 bg-white">
+          {feedItems.map(item => (
+            <FeedItem 
+              key={item.id}
+              item={item} 
+              onArchive={() => handleArchive(item.id)}
+              onMarkRead={() => handleMarkRead(item.id)}
+              onClick={() => {
+                // Navigate to detail page on mobile
+                console.log('Navigate to detail:', item.id);
+              }}
+            />
+          ))}
+        </div>
+
+        {/* FAB for teachers */}
+        {userRole === UserRole.TEACHER && (
+          <div className="fixed bottom-20 right-4 pb-safe">
+            <Button
+              variant="primary"
+              size="lg"
+              className="rounded-full shadow-lg w-14 h-14 p-0 fab"
+            >
+              <Plus size={24} />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop View - Hidden on mobile */}
+      <div className="hidden xl:flex h-full">
         {/* List Panel */}
         <div className="w-96 border-r border-gray-200 overflow-y-auto bg-white">
           <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
@@ -128,50 +169,6 @@ export function FeedPage() {
           )}
         </div>
       </div>
-    );
-  }
-
-  // Mobile view
-  return (
-    <div className="h-full overflow-y-auto bg-gray-50">
-      {/* Sticky header */}
-      <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Feed</h1>
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
-            <Filter size={20} />
-          </button>
-        </div>
-      </div>
-
-      {/* Feed items */}
-      <div className="divide-y divide-gray-100 bg-white">
-        {feedItems.map(item => (
-          <FeedItem 
-            key={item.id}
-            item={item} 
-            onArchive={() => handleArchive(item.id)}
-            onMarkRead={() => handleMarkRead(item.id)}
-            onClick={() => {
-              // Navigate to detail page on mobile
-              console.log('Navigate to detail:', item.id);
-            }}
-          />
-        ))}
-      </div>
-
-      {/* FAB for teachers */}
-      {userRole === UserRole.TEACHER && (
-        <div className="fixed bottom-20 right-4 pb-safe">
-          <Button
-            variant="primary"
-            size="lg"
-            className="rounded-full shadow-lg w-14 h-14 p-0"
-          >
-            <Plus size={24} />
-          </Button>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
