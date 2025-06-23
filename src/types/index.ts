@@ -178,3 +178,6 @@ export interface NavItem {
   path: string;
   roles?: UserRole[];
 }
+
+// Re-export AI types
+export * from './ai.types';

@@ -1,68 +1,96 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Mic, MoreVertical, Camera, File, Image, MapPin, User, X } from 'lucide-react';
+import { 
+  Send, 
+  Paperclip, 
+  Mic, 
+  MoreVertical, 
+  Camera, 
+  File, 
+  Image, 
+  MapPin, 
+  User, 
+  X,
+  Plus,
+  BookOpen,
+  Star,
+  Sparkles,
+  Brain,
+  Lightbulb,
+  Calculator,
+  FileText,
+  HelpCircle
+} from 'lucide-react';
 import { Button } from '@components/common/Button';
 import { VoiceRecorder } from '@components/chat/VoiceRecorder';
-import type { ChatMessage } from '@types';
+import { AttachmentPicker } from '@components/chat/AttachmentPicker';
+import { AttachmentChip } from '@components/chat/AttachmentChip';
+import { useChatStore } from '@stores/chat.store';
+import { useNotebookStore } from '@stores/notebook.store';
+import { useAuthStore } from '@stores/auth';
+import { useContextStore } from '@stores/context.store';
+import { aiEducationService } from '@services/ai.service';
+import type { ChatMessage, MessageAttachment } from '@types';
 
 export function ChatPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Hello! I\'m your AI tutor. I see you have a math assignment on quadratic equations. Would you like help understanding the concepts or working through specific problems?',
-      timestamp: new Date(Date.now() - 1000 * 60 * 5),
-    }
-  ]);
   const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+  const [showQuickActions, setShowQuickActions] = useState(true);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  
+  const { user } = useAuthStore();
+  const { currentContext } = useContextStore();
+  const { 
+    activeSession,
+    messages,
+    isTyping,
+    createSession,
+    sendMessage,
+    saveToNotebook
+  } = useChatStore();
+  
+  const { addEntry: addNotebookEntry } = useNotebookStore();
+  
+  // Create or get active session
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (!activeSession && user) {
+      const subject = currentContext.type === 'subject' ? currentContext.subject : undefined;
+      createSession('AI Study Session', subject);
+    }
+  }, [activeSession, user, currentContext, createSession]);
+  
+  const chatMessages = activeSession ? messages[activeSession.id] || [] : [];
+  
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isTyping]);
+  
+  // Get quick actions based on subject
+  const quickActions = activeSession?.subject 
+    ? aiEducationService.getQuickActions(activeSession.subject)
+    : aiEducationService.getQuickActions();
 
   const handleSend = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || !activeSession) return;
 
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputValue,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
+    const message = inputValue.trim();
     setInputValue('');
-    setIsTyping(true);
+    setShowQuickActions(false);
     
     // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'I understand you need help with that. Let me break it down for you step by step...',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiMessage]);
-      setIsTyping(false);
-    }, 2000);
+    
+    await sendMessage(message, attachments);
+    setAttachments([]); // Clear attachments after sending
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Desktop: Shift+Enter for new line, Enter to send
-    // Mobile: Enter for new line, send button to send
     const isMobile = window.innerWidth < 768;
     
     if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
@@ -77,28 +105,66 @@ export function ChatPage() {
     // Auto-resize textarea
     const textarea = e.target;
     textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 144) + 'px'; // Max ~6 lines
+    textarea.style.height = Math.min(textarea.scrollHeight, 144) + 'px';
   };
-
-  const attachmentOptions = [
-    { icon: Camera, label: 'Camera', color: 'text-pink-600' },
-    { icon: Image, label: 'Gallery', color: 'text-purple-600' },
-    { icon: File, label: 'Document', color: 'text-blue-600' },
-    { icon: MapPin, label: 'Location', color: 'text-green-600' },
-    { icon: User, label: 'Contact', color: 'text-orange-600' },
-  ];
+  
+  const handleQuickAction = (action: any) => {
+    setInputValue(action.prompt);
+    setShowQuickActions(false);
+    textareaRef.current?.focus();
+  };
+  
+  const handleSaveToNotebook = async (message: ChatMessage) => {
+    if (!message.thinking?.suggestedNotes.length || !activeSession?.subject) return;
+    
+    // Save the first suggested note
+    const suggestion = message.thinking.suggestedNotes[0];
+    const entry = await addNotebookEntry({
+      title: suggestion.title,
+      content: message.content,
+      type: suggestion.type,
+      subject: activeSession.subject,
+      tags: ['ai-generated', activeSession.subject.code.toLowerCase()],
+      isAIGenerated: true,
+      sourceMessageId: message.id,
+      sourceChatId: activeSession.id,
+      isFavorite: false,
+      isArchived: false,
+      order: 0
+    });
+    
+    await saveToNotebook(message.id);
+  };
+  
+  const getMessageIcon = (message: ChatMessage) => {
+    if (message.type === 'user') return null;
+    
+    if (message.thinking?.teachingStrategy.method === 'step-by-step') {
+      return <Calculator className="w-4 h-4" />;
+    } else if (message.thinking?.concepts.some(c => c.importance === 'core')) {
+      return <Lightbulb className="w-4 h-4" />;
+    }
+    
+    return <Brain className="w-4 h-4" />;
+  };
+  
+  const removeAttachment = (id: string) => {
+    setAttachments(attachments.filter(att => att.id !== id));
+  };
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {/* Chat Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-brand-primary rounded-full flex items-center justify-center">
-            <span className="text-xl">🤖</span>
+          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-purple-600" />
           </div>
           <div>
             <h2 className="font-semibold">AI Tutor</h2>
-            <p className="text-xs text-gray-600">Always here to help</p>
+            <p className="text-xs text-gray-600">
+              {activeSession?.subject ? activeSession.subject.name : 'All Subjects'}
+            </p>
           </div>
         </div>
         <button className="p-2 hover:bg-gray-100 rounded-lg">
@@ -108,33 +174,140 @@ export function ChatPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.map(message => (
-          <div
-            key={message.id}
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`message-bubble max-w-[70%] sm:max-w-[80%] ${
-                message.role === 'user'
-                  ? 'bg-brand-primary text-white rounded-br-md'
-                  : 'bg-white text-gray-900 rounded-bl-md shadow-sm'
-              }`}
-            >
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-              <p className={`text-xs mt-1 ${
-                message.role === 'user' ? 'text-white/70' : 'text-gray-500'
-              }`}>
-                {new Date(message.timestamp).toLocaleTimeString([], { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })}
-              </p>
+        {chatMessages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+              <Sparkles className="w-10 h-10 text-purple-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Hi {user?.name?.split(' ')[0]}! 👋
+            </h2>
+            <p className="text-gray-600 mb-6 max-w-sm">
+              I'm your AI tutor. I can help you understand concepts, work through problems, 
+              and prepare for tests. What would you like to learn today?
+            </p>
+            
+            {/* Quick Start Topics */}
+            <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+              {quickActions.slice(0, 4).map((action) => (
+                <button 
+                  key={action.id}
+                  onClick={() => handleQuickAction(action)}
+                  className="p-3 bg-white border border-gray-200 rounded-xl hover:border-purple-300 transition-colors text-left"
+                >
+                  <span className="text-xl mb-1">{action.icon}</span>
+                  <span className="text-sm font-medium block">{action.label}</span>
+                </button>
+              ))}
             </div>
           </div>
-        ))}
+        ) : (
+          <>
+            {chatMessages.map(message => (
+              <div
+                key={message.id}
+                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} gap-3`}
+              >
+                {message.type === 'ai' && (
+                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    {getMessageIcon(message) || <Sparkles className="w-4 h-4 text-purple-600" />}
+                  </div>
+                )}
+                
+                <div
+                  className={`message-bubble max-w-[70%] sm:max-w-[80%] ${
+                    message.type === 'user'
+                      ? 'bg-purple-600 text-white rounded-br-md'
+                      : 'bg-white text-gray-900 rounded-bl-md shadow-sm'
+                  }`}
+                >
+                  {/* Attachments */}
+                  {message.attachments && message.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {message.attachments.map(att => (
+                        <div 
+                          key={att.id}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+                            message.type === 'user' 
+                              ? 'bg-white/20 text-white'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {att.type === 'notebook' && <BookOpen className="w-3 h-3" />}
+                          {att.type === 'assignment' && <FileText className="w-3 h-3" />}
+                          {att.type === 'image' && <Image className="w-3 h-3" />}
+                          {att.type === 'document' && <File className="w-3 h-3" />}
+                          <span>{att.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p className={`text-xs mt-1 ${
+                    message.type === 'user' ? 'text-white/70' : 'text-gray-500'
+                  }`}>
+                    {new Date(message.timestamp).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </p>
+                  
+                  {/* AI Thinking Indicators */}
+                  {message.type === 'ai' && message.thinking && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      {/* Confidence Level */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-2 h-2 rounded-full ${
+                          message.thinking.studentLevel.confidence === 'high' 
+                            ? 'bg-green-500'
+                            : message.thinking.studentLevel.confidence === 'medium'
+                            ? 'bg-yellow-500'
+                            : 'bg-red-500'
+                        }`} />
+                        <span className="text-xs text-gray-500">
+                          {message.thinking.studentLevel.confidence} confidence in understanding
+                        </span>
+                      </div>
+                      
+                      {/* Save to Notebook */}
+                      {message.thinking.suggestedNotes.length > 0 && !message.savedToNotebook && (
+                        <button
+                          onClick={() => handleSaveToNotebook(message)}
+                          className="flex items-center gap-2 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+                        >
+                          <BookOpen className="w-3 h-3" />
+                          Save to Notebook
+                        </button>
+                      )}
+                      
+                      {message.savedToNotebook && (
+                        <span className="flex items-center gap-2 text-xs text-green-600">
+                          <BookOpen className="w-3 h-3" />
+                          Saved to Notebook
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {message.type === 'user' && (
+                  <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-medium text-gray-600">
+                      {user?.name?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        )}
         
         {isTyping && (
-          <div className="flex justify-start">
+          <div className="flex justify-start gap-3">
+            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-purple-600" />
+            </div>
             <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
               <div className="flex gap-1">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -147,6 +320,39 @@ export function ChatPage() {
         
         <div ref={messagesEndRef} />
       </div>
+      
+      {/* Quick Actions */}
+      {showQuickActions && chatMessages.length > 0 && (
+        <div className="px-4 pb-2">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+            {quickActions.map((action) => (
+              <button
+                key={action.id}
+                onClick={() => handleQuickAction(action)}
+                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-full text-sm whitespace-nowrap hover:border-purple-300 transition-colors"
+              >
+                <span>{action.icon}</span>
+                <span>{action.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Attached Context Bar */}
+      {attachments.length > 0 && (
+        <div className="bg-purple-50 border-t border-purple-200 px-4 py-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            {attachments.map(att => (
+              <AttachmentChip
+                key={att.id}
+                attachment={att}
+                onRemove={removeAttachment}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Input */}
       <div className="bg-white border-t border-gray-200 px-4 pt-2 pb-3 safe-bottom">
@@ -155,7 +361,7 @@ export function ChatPage() {
             className="p-2 hover:bg-gray-100 rounded-lg touch-manipulation"
             onClick={() => setShowAttachmentSheet(true)}
           >
-            <Paperclip size={20} className="text-gray-600" />
+            <Plus size={20} className="text-gray-600" />
           </button>
           
           <div className="flex-1 relative">
@@ -164,9 +370,9 @@ export function ChatPage() {
               value={inputValue}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
+              placeholder={attachments.length > 0 ? "Ask about the attached context..." : "Type a message..."}
               rows={1}
-              className="w-full px-4 py-2.5 bg-gray-100 rounded-3xl resize-none overflow-y-auto focus:outline-none focus:ring-2 focus:ring-brand-primary/20 min-h-[44px] max-h-[144px]"
+              className="w-full px-4 py-2.5 bg-gray-100 rounded-3xl resize-none overflow-y-auto focus:outline-none focus:ring-2 focus:ring-purple-500/20 min-h-[44px] max-h-[144px]"
               style={{ lineHeight: '1.5' }}
             />
           </div>
@@ -176,6 +382,7 @@ export function ChatPage() {
               onClick={handleSend}
               size="sm"
               className="rounded-full min-h-[44px] min-w-[44px] p-0"
+              disabled={isTyping}
             >
               <Send size={18} />
             </Button>
@@ -188,6 +395,10 @@ export function ChatPage() {
             </button>
           )}
         </div>
+        
+        <p className="text-xs text-gray-500 mt-2 text-center">
+          I'll guide you to find answers, not give them directly
+        </p>
       </div>
 
       {/* Voice Recorder */}
@@ -197,56 +408,22 @@ export function ChatPage() {
         onSend={(duration) => {
           console.log('Voice note sent, duration:', duration);
           setIsRecording(false);
-          // Here you would handle the voice recording
-          const voiceMessage: ChatMessage = {
-            id: Date.now().toString(),
-            role: 'user',
-            content: `🎤 Voice message (${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')})`,
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, voiceMessage]);
+          const voiceMessage = `🎤 Voice message (${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')})`;
+          setInputValue(voiceMessage);
+          handleSend();
         }}
       />
 
-      {/* Attachment Sheet */}
-      {showAttachmentSheet && (
-        <>
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 animate-fade-in"
-            onClick={() => setShowAttachmentSheet(false)}
-          />
-          <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl z-50 animate-slide-up safe-bottom">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold">Send</h3>
-                <button
-                  onClick={() => setShowAttachmentSheet(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                {attachmentOptions.map(({ icon: Icon, label, color }) => (
-                  <button
-                    key={label}
-                    className="flex flex-col items-center gap-3 p-4 hover:bg-gray-50 rounded-xl transition-colors"
-                    onClick={() => {
-                      console.log(`${label} clicked`);
-                      setShowAttachmentSheet(false);
-                    }}
-                  >
-                    <div className={`w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center ${color}`}>
-                      <Icon size={24} />
-                    </div>
-                    <span className="text-sm text-gray-700">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Attachment Picker */}
+      <AttachmentPicker
+        isOpen={showAttachmentSheet}
+        onClose={() => setShowAttachmentSheet(false)}
+        onSelect={(attachment) => {
+          setAttachments([...attachments, attachment]);
+          setShowAttachmentSheet(false);
+        }}
+        selectedAttachments={attachments}
+      />
     </div>
   );
 }
