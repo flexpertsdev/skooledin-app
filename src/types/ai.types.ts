@@ -1,253 +1,362 @@
-import { Subject, Assignment, Attachment } from './index';
+import type { BaseEntity } from './common.types';
+import type { AssignmentType, Subject } from './education.types';
 
-// Core Chat Types
-export interface ChatMessage {
-  id: string;
-  chatId: string;
-  content: string;
-  type: 'user' | 'ai' | 'system';
-  timestamp: Date;
-  status: 'sending' | 'sent' | 'delivered' | 'error';
-  attachments?: MessageAttachment[];
-  notebookRefs?: string[];
-  thinking?: AIThinking;
-  savedToNotebook?: boolean;
-}
-
-export interface MessageAttachment {
-  id: string;
-  type: 'notebook' | 'assignment' | 'document' | 'image';
-  resourceId: string;
-  title: string;
-  preview?: string;
-}
-
-export interface ChatSession {
-  id: string;
-  userId: string;
-  title: string;
-  subject?: Subject;
-  createdAt: Date;
-  updatedAt: Date;
-  lastMessage?: string;
-  messageCount: number;
-  isActive: boolean;
-}
-
-// AI Context Types
-export interface StudyContext {
-  activeAssignments: Assignment[];
-  recentTopics: string[];
-  strugglingConcepts: string[];
-  masteredConcepts: string[];
-  currentGradeLevel: number;
-  preferredLearningStyle?: 'visual' | 'auditory' | 'kinesthetic';
-  subjects: Subject[];
-  attachedNotes?: string[];
-}
-
-export interface AIThinking {
-  concepts: {
-    name: string;
-    importance: 'core' | 'supporting' | 'prerequisite';
-    studentKnows: boolean;
-  }[];
-  teachingStrategy: {
-    method: 'explanation' | 'step-by-step' | 'socratic' | 'example-based';
-    reason: string;
-  };
-  studentLevel: {
-    understanding: number; // 0-100
-    confidence: 'low' | 'medium' | 'high';
-    misconceptions: string[];
-  };
-  suggestedNotes: {
-    title: string;
-    type: NotebookEntry['type'];
-    importance: 'high' | 'medium' | 'low';
-  }[];
-}
-
-// Notebook Types
-export interface NotebookEntry {
-  id: string;
-  userId: string;
-  title: string;
-  content: string;
-  type: 'concept' | 'formula' | 'vocabulary' | 'summary' | 'practice' | 'example' | 'quiz' | 'flashcard';
-  subject: Subject;
-  tags: string[];
-  isAIGenerated: boolean;
-  sourceMessageId?: string;
-  sourceChatId?: string;
-  attachedFiles?: FileAttachment[];
-  annotations?: Annotation[];
-  gradeLevel?: number;
-  difficulty?: 'easy' | 'medium' | 'hard';
-  folderId?: string;
-  isFavorite: boolean;
-  isArchived: boolean;
-  viewCount: number;
-  lastViewed?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  order: number;
-}
-
-export interface FileAttachment {
-  id: string;
-  type: 'pdf' | 'image' | 'document';
-  url: string;
-  name: string;
-  size: number;
-  uploadedAt: Date;
-}
-
-export interface Annotation {
-  id: string;
-  pageNumber?: number;
-  position?: { x: number; y: number };
-  content: string;
-  color: string;
-  createdAt: Date;
-}
-
-export interface NotebookFolder {
-  id: string;
-  userId: string;
-  name: string;
-  parentId?: string;
-  subjectId?: string;
-  order: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface NotebookTemplate {
-  id: string;
-  name: string;
-  description: string;
-  type: NotebookEntry['type'];
-  structure: {
-    sections: {
-      title: string;
-      prompt: string;
-      required: boolean;
-    }[];
-  };
-}
-
-// AI Response Types
-export interface StructuredAIResponse {
-  content: string;
-  thinking: AIThinking;
-  suggestedFollowUp?: string[];
-  visualElements?: {
-    type: 'equation' | 'diagram' | 'code' | 'chart';
-    data: any;
-  }[];
-  relatedAssignments?: Assignment[];
-  practiceProblems?: PracticeProblem[];
-}
-
-export interface PracticeProblem {
-  id: string;
-  question: string;
-  type: 'multiple-choice' | 'short-answer' | 'calculation' | 'essay';
-  difficulty: 'easy' | 'medium' | 'hard';
-  hints: string[];
-  solution: string;
-  explanation: string;
-  correctAnswer?: string;
-  options?: {
-    id: string;
-    text: string;
-    isCorrect: boolean;
-    explanation?: string;
-  }[];
-}
-
-// AI Service Types
-export interface AIEducationConfig {
+// AI Service Configuration
+export interface AIServiceConfig {
+  provider: AIProvider;
   model: string;
   temperature: number;
   maxTokens: number;
-  systemPrompt: string;
-  subjectSpecificPrompts: Record<string, string>;
+  systemPrompt?: string;
+  features: AIFeature[];
 }
 
-export interface QuickAction {
-  id: string;
-  label: string;
-  prompt: string;
-  icon: string;
-  category: 'homework' | 'concept' | 'practice' | 'exam';
-}
-
-// PDF and Document Processing Types
-export interface ProcessedWorksheet {
-  id: string;
-  originalPdf: string;
-  questions: WorksheetQuestion[];
-  metadata: {
-    subject: Subject;
-    topics: string[];
-    difficulty: 'easy' | 'medium' | 'hard';
-  };
-}
-
-export interface WorksheetQuestion {
-  id: string;
-  text: string;
-  pageNumber: number;
-  position: { x: number; y: number; width: number; height: number };
-  answerSpace?: { x: number; y: number; width: number; height: number };
-  type: 'multiple-choice' | 'short-answer' | 'calculation' | 'essay';
-  userAnswer?: string;
-  feedback?: string;
-}
-
-// Study Tool Types
-export interface Flashcard {
-  id: string;
-  notebookEntryId?: string;
-  question: string;
-  answer: string;
-  mastery: number; // 0-5
-  lastReviewed?: Date;
-  nextReview?: Date;
-}
-
-export interface StudyGuide {
-  id: string;
-  title: string;
-  subject: Subject;
-  sourceNoteIds: string[];
+// AI Response
+export interface AIResponse extends BaseEntity {
+  sessionId: string;
+  messageId: string;
   content: string;
-  type: 'summary' | 'outline' | 'concept-map';
+  type: AIResponseType;
+  thinking?: AIThinking;
+  confidence: number;
+  metadata: AIResponseMetadata;
+  suggestions?: AISuggestion[];
+  generatedContent?: GeneratedContent[];
+}
+
+// AI Thinking Process
+export interface AIThinking {
+  steps: ThinkingStep[];
+  duration: number; // ms
+  complexity: 'simple' | 'moderate' | 'complex';
+  approach: string;
+}
+
+export interface ThinkingStep {
+  id: string;
+  type: 'analysis' | 'reasoning' | 'calculation' | 'research' | 'planning';
+  description: string;
+  confidence: number;
+  subSteps?: string[];
+}
+
+// AI Suggestions
+export interface AISuggestion {
+  id: string;
+  type: SuggestionType;
+  title: string;
+  description: string;
+  action?: SuggestionAction;
+  priority: 'low' | 'medium' | 'high';
+}
+
+export interface SuggestionAction {
+  type: 'create_note' | 'practice_problems' | 'review_concept' | 'ask_followup';
+  params?: Record<string, any>;
+}
+
+// Generated Content
+export interface GeneratedContent {
+  id: string;
+  type: GeneratedContentType;
+  title: string;
+  content: any; // Type-specific content
+  format: 'markdown' | 'json' | 'html' | 'latex';
+  canSaveToNotebook: boolean;
+  metadata?: ContentMetadata;
+}
+
+export interface ContentMetadata {
+  subject?: Subject;
+  topics?: string[];
+  difficulty?: 'easy' | 'medium' | 'hard';
+  estimatedTime?: number; // minutes
+  prerequisites?: string[];
+}
+
+// Study Tools Generation
+export interface StudyToolRequest {
+  type: StudyToolType;
+  sourceIds: string[]; // noteIds, messageIds, etc.
+  options: StudyToolOptions;
+  targetGradeLevel?: number;
+  focusAreas?: string[];
+}
+
+export interface StudyToolOptions {
+  count?: number;
+  difficulty?: 'easy' | 'medium' | 'hard' | 'adaptive';
+  includeExplanations?: boolean;
+  format?: 'standard' | 'interactive' | 'gamified';
+  timeLimit?: number; // minutes
+}
+
+export interface GeneratedStudyTool extends BaseEntity {
+  type: StudyToolType;
+  title: string;
+  description: string;
+  content: StudyToolContent;
+  metadata: StudyToolMetadata;
+  sourceIds: string[];
+}
+
+export interface StudyToolContent {
+  items: any[]; // Type-specific items
+  instructions?: string;
+  answerKey?: any;
+  resources?: string[];
+}
+
+export interface StudyToolMetadata {
+  difficulty: 'easy' | 'medium' | 'hard' | 'adaptive';
+  estimatedTime: number; // minutes
   topics: string[];
-  estimatedStudyTime: number; // minutes
-  createdAt: Date;
+  skills: string[];
+  successCriteria?: string;
 }
 
-// Context Types for AI Understanding
-export interface StudentProfile {
-  userId: string;
-  gradeLevel: number;
+// AI Analysis
+export interface ContentAnalysis {
+  summary: string;
+  keyPoints: string[];
+  concepts: ConceptExtraction[];
+  difficulty: DifficultyAnalysis;
+  suggestions: LearningRecommendation[];
+}
+
+export interface ConceptExtraction {
+  concept: string;
+  definition?: string;
+  importance: 'core' | 'supporting' | 'related';
+  prerequisites?: string[];
+  relatedConcepts?: string[];
+}
+
+export interface DifficultyAnalysis {
+  overall: 'easy' | 'medium' | 'hard';
+  factors: DifficultyFactor[];
+  recommendedGradeLevel: number;
+  readabilityScore?: number;
+}
+
+export interface DifficultyFactor {
+  name: string;
+  score: number; // 0-10
+  description: string;
+}
+
+export interface LearningRecommendation {
+  type: 'prerequisite' | 'practice' | 'extension' | 'clarification';
+  title: string;
+  description: string;
+  resources?: string[];
+  estimatedTime?: number; // minutes
+}
+
+// Homework Helper
+export interface HomeworkHelperRequest {
+  assignmentId?: string;
+  type?: AssignmentType;
+  subject?: Subject;
+  question: string;
+  attachments?: string[]; // attachment IDs
+  showSteps: boolean;
+  explainConcepts: boolean;
+}
+
+export interface HomeworkHelperResponse {
+  solution: string;
+  steps?: SolutionStep[];
+  concepts?: ConceptExplanation[];
+  similarProblems?: PracticeProblem[];
+  confidence: number;
+  warnings?: string[];
+}
+
+export interface SolutionStep {
+  stepNumber: number;
+  description: string;
+  action: string;
+  result?: string;
+  explanation?: string;
+  formula?: string;
+}
+
+export interface ConceptExplanation {
+  concept: string;
+  explanation: string;
+  examples?: string[];
+  visualAid?: string; // URL or base64
+  relatedTo?: string[];
+}
+
+export interface PracticeProblem {
+  question: string;
+  difficulty: 'easier' | 'same' | 'harder';
+  hints?: string[];
+  solution?: string;
+}
+
+// Writing Assistant
+export interface WritingAssistantRequest {
+  type: WritingTaskType;
+  content?: string; // existing content to improve
+  requirements?: WritingRequirements;
+  rubric?: string;
+  targetWordCount?: number;
+}
+
+export interface WritingRequirements {
+  topic?: string;
+  thesis?: string;
+  outline?: string[];
+  style?: 'formal' | 'informal' | 'academic' | 'creative';
+  citations?: boolean;
+  sources?: string[];
+}
+
+export interface WritingAssistantResponse {
+  content: string;
+  feedback?: WritingFeedback;
+  suggestions?: WritingSuggestion[];
+  score?: RubricScore;
+}
+
+export interface WritingFeedback {
   strengths: string[];
-  weaknesses: string[];
-  learningStyle: 'visual' | 'auditory' | 'kinesthetic' | 'mixed';
-  pace: 'slow' | 'normal' | 'fast';
-  interests: string[];
-  goals: string[];
+  improvements: string[];
+  grammar?: GrammarCheck[];
+  style?: StyleSuggestion[];
+  structure?: StructureFeedback;
 }
 
-export interface ConceptMastery {
-  conceptId: string;
-  conceptName: string;
-  subject: Subject;
-  masteryLevel: number; // 0-100
-  lastAssessed: Date;
-  practiceCount: number;
-  correctRate: number;
+export interface GrammarCheck {
+  text: string;
+  issue: string;
+  suggestion: string;
+  position: { start: number; end: number };
 }
+
+export interface StyleSuggestion {
+  type: 'clarity' | 'conciseness' | 'tone' | 'vocabulary';
+  text: string;
+  suggestion: string;
+  reason: string;
+}
+
+export interface StructureFeedback {
+  currentStructure: string[];
+  suggestedStructure?: string[];
+  issues?: string[];
+}
+
+export interface WritingSuggestion {
+  type: 'expand' | 'clarify' | 'support' | 'transition' | 'conclude';
+  location: string;
+  suggestion: string;
+  example?: string;
+}
+
+export interface RubricScore {
+  totalScore: number;
+  maxScore: number;
+  breakdown: RubricBreakdown[];
+}
+
+export interface RubricBreakdown {
+  criterion: string;
+  score: number;
+  maxScore: number;
+  feedback: string;
+}
+
+// Supporting interfaces
+export interface AIResponseMetadata {
+  processingTime: number; // ms
+  modelVersion: string;
+  temperature?: number;
+  tokenUsage?: TokenUsage;
+  sources?: string[];
+  citations?: Citation[];
+}
+
+export interface TokenUsage {
+  prompt: number;
+  completion: number;
+  total: number;
+  cost?: number;
+}
+
+export interface Citation {
+  id: string;
+  type: 'notebook' | 'textbook' | 'web' | 'academic';
+  title: string;
+  author?: string;
+  url?: string;
+  pageNumber?: number;
+  quote?: string;
+}
+
+// Enums
+export type AIProvider = 
+  | 'openai'
+  | 'anthropic'
+  | 'google'
+  | 'local'
+  | 'custom';
+
+export type AIFeature = 
+  | 'chat'
+  | 'homework_help'
+  | 'writing_assistant'
+  | 'study_tools'
+  | 'concept_explanation'
+  | 'problem_solving'
+  | 'language_translation'
+  | 'code_assistance';
+
+export type AIResponseType = 
+  | 'answer'
+  | 'explanation'
+  | 'solution'
+  | 'feedback'
+  | 'summary'
+  | 'study_tool'
+  | 'suggestion';
+
+export type SuggestionType = 
+  | 'next_topic'
+  | 'practice'
+  | 'review'
+  | 'break'
+  | 'resources'
+  | 'clarification';
+
+export type GeneratedContentType = 
+  | 'summary'
+  | 'outline'
+  | 'flashcards'
+  | 'quiz'
+  | 'practice_problems'
+  | 'study_guide'
+  | 'mind_map'
+  | 'essay_outline';
+
+export type StudyToolType = 
+  | 'flashcards'
+  | 'quiz'
+  | 'practice_test'
+  | 'study_guide'
+  | 'summary_sheet'
+  | 'concept_map'
+  | 'mnemonics'
+  | 'timeline';
+
+export type WritingTaskType = 
+  | 'essay'
+  | 'report'
+  | 'creative'
+  | 'outline'
+  | 'improve'
+  | 'proofread'
+  | 'paraphrase';

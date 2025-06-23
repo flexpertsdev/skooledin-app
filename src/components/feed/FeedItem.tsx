@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { ChevronRight, Clock, FileText, Megaphone, GraduationCap } from 'lucide-react';
 import { SwipeableCard } from './SwipeableCard';
 import type { FeedItem as FeedItemType } from '@types';
-import { FeedItemType as FeedType } from '@types';
 import { format } from 'date-fns';
 
 interface FeedItemProps {
@@ -15,41 +14,45 @@ interface FeedItemProps {
 export function FeedItem({ item, onArchive, onMarkRead, onClick }: FeedItemProps) {
   const getIcon = () => {
     switch (item.type) {
-      case FeedType.ASSIGNMENT:
+      case 'assignment_created':
+      case 'assignment_due_soon':
         return <FileText size={24} className="text-white" />;
-      case FeedType.ANNOUNCEMENT:
+      case 'class_announcement':
         return <Megaphone size={24} className="text-white" />;
-      case FeedType.GRADE:
+      case 'grade_posted':
         return <GraduationCap size={24} className="text-white" />;
+      default:
+        return <FileText size={24} className="text-white" />;
     }
   };
 
   const getIconBg = () => {
     switch (item.type) {
-      case FeedType.ASSIGNMENT:
-        return 'bg-subject-math'; // Use actual subject color
-      case FeedType.ANNOUNCEMENT:
-        return 'bg-brand-primary';
-      case FeedType.GRADE:
-        return 'bg-success';
+      case 'assignment_created':
+      case 'assignment_due_soon':
+        return 'bg-blue-500';
+      case 'class_announcement':
+        return 'bg-purple-600';
+      case 'grade_posted':
+        return 'bg-green-500';
+      default:
+        return 'bg-gray-500';
     }
   };
-
-  // Remove unused getSubtitle function - subtitle logic is inlined below
 
   const getBadges = () => {
     const badges = [];
     
-    if (!item.read) {
-      badges.push({ label: 'New', className: 'bg-info' });
+    if (!item.isRead) {
+      badges.push({ label: 'New', className: 'bg-blue-500' });
     }
     
-    if (item.priority === 'high') {
-      badges.push({ label: 'Urgent', className: 'bg-error' });
+    if (item.priority === 'high' || item.priority === 'urgent') {
+      badges.push({ label: 'Urgent', className: 'bg-red-500' });
     }
     
-    if (item.type === FeedType.ANNOUNCEMENT && 'important' in item && item.important) {
-      badges.push({ label: 'Important', className: 'bg-warning' });
+    if (item.isPinned) {
+      badges.push({ label: 'Pinned', className: 'bg-yellow-500' });
     }
     
     return badges;
@@ -77,7 +80,7 @@ export function FeedItem({ item, onArchive, onMarkRead, onClick }: FeedItemProps
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline justify-between mb-1">
-            <h3 className={`font-semibold text-gray-900 truncate ${!item.read ? 'font-bold' : ''}`}>
+            <h3 className={`font-semibold text-gray-900 truncate ${!item.isRead ? 'font-bold' : ''}`}>
               {item.title}
             </h3>
             <span className="text-xs text-gray-500 flex items-center gap-1 flex-shrink-0 ml-2">
@@ -87,9 +90,7 @@ export function FeedItem({ item, onArchive, onMarkRead, onClick }: FeedItemProps
           </div>
           
           <p className="text-sm text-gray-600 truncate">
-            {'description' in item && item.description ? String(item.description) : 
-             'content' in item && item.content ? String(item.content) : 
-             'From ' + item.createdBy.name}
+            {item.description || `Updated ${item.type.replace(/_/g, ' ')}`}
           </p>
           
           {badges.length > 0 && (

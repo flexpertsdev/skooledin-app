@@ -3,17 +3,13 @@ import {
   X, 
   BookOpen, 
   FileText, 
-  Image, 
-  File, 
   Search,
   Clock,
   Star,
-  FolderOpen,
   Upload,
   ChevronRight
 } from 'lucide-react';
 import { useNotebookStore } from '@stores/notebook.store';
-import { useAuthStore } from '@stores/auth';
 import type { MessageAttachment, NotebookEntry, Assignment } from '@types';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -33,8 +29,7 @@ export function AttachmentPicker({
   const [activeTab, setActiveTab] = useState<'notebook' | 'assignments' | 'upload'>('notebook');
   const [searchQuery, setSearchQuery] = useState('');
   
-  const { entries, folders, getRecentEntries, getFavorites } = useNotebookStore();
-  const { user } = useAuthStore();
+  const { entries, getRecentEntries, getFavorites } = useNotebookStore();
   
   // Filter notebook entries based on search
   const filteredEntries = entries.filter(entry => {
@@ -51,19 +46,27 @@ export function AttachmentPicker({
   const mockAssignments: Assignment[] = [
     {
       id: 'assignment-1',
-      type: 'assignment',
       title: 'Quadratic Equations Practice',
       description: 'Complete problems 1-20 on page 145',
+      classId: 'class-1',
+      subjectId: 'math',
+      teacherId: 'teacher-1',
+      type: 'homework',
+      instructions: 'Complete all problems showing your work',
       dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
       points: 50,
       attachments: [],
-      submissions: [],
-      subject: { id: 'math', name: 'Mathematics', code: 'MATH', color: '#3B82F6', icon: '🔢' },
-      createdAt: new Date(),
-      createdBy: {} as any,
+      settings: {
+        allowLateSubmission: true,
+        maxAttempts: 1,
+        showAnswersAfterDue: true,
+        requireProctoring: false,
+        shuffleQuestions: false
+      },
+      status: 'active',
       priority: 'high',
-      read: false,
-      context: { id: 'math', type: 'subject', name: 'Mathematics' }
+      createdAt: new Date(),
+      updatedAt: new Date()
     }
   ];
   
@@ -73,7 +76,8 @@ export function AttachmentPicker({
       type: 'notebook',
       resourceId: entry.id,
       title: entry.title,
-      preview: entry.content.substring(0, 150) + '...'
+      preview: entry.content.substring(0, 150) + '...',
+      metadata: {}
     };
     onSelect(attachment);
   };
@@ -84,7 +88,8 @@ export function AttachmentPicker({
       type: 'assignment',
       resourceId: assignment.id,
       title: assignment.title,
-      preview: assignment.description
+      preview: assignment.description,
+      metadata: {}
     };
     onSelect(attachment);
   };
@@ -235,13 +240,13 @@ export function AttachmentPicker({
                           </p>
                           <div className="flex items-center gap-2 mt-2">
                             <span className="text-xs text-gray-500">
-                              {entry.subject.name}
+                              {entry.subjectId}
                             </span>
                             <span className="text-xs text-gray-400">•</span>
                             <span className="text-xs text-gray-500">
                               {formatDistanceToNow(entry.updatedAt, { addSuffix: true })}
                             </span>
-                            {entry.isFavorite && (
+                            {entry.metadata.isFavorite && (
                               <>
                                 <span className="text-xs text-gray-400">•</span>
                                 <Star className="w-3 h-3 text-yellow-500 fill-current" />
@@ -283,7 +288,7 @@ export function AttachmentPicker({
                       </p>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-xs text-gray-500">
-                          {assignment.subject.name}
+                          {assignment.subjectId}
                         </span>
                         <span className="text-xs text-gray-400">•</span>
                         <span className="text-xs text-gray-500">

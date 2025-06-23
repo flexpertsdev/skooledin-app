@@ -1,24 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { 
   Send, 
-  Paperclip, 
   Mic, 
   MoreVertical, 
-  Camera, 
-  File, 
-  Image, 
-  MapPin, 
-  User, 
-  X,
   Plus,
   BookOpen,
-  Star,
   Sparkles,
   Brain,
   Lightbulb,
   Calculator,
   FileText,
-  HelpCircle
+  Image,
+  File
 } from 'lucide-react';
 import { Button } from '@components/common/Button';
 import { VoiceRecorder } from '@components/chat/VoiceRecorder';
@@ -28,7 +21,7 @@ import { useChatStore } from '@stores/chat.store';
 import { useNotebookStore } from '@stores/notebook.store';
 import { useAuthStore } from '@stores/auth';
 import { useContextStore } from '@stores/context.store';
-import { aiEducationService } from '@services/ai.service';
+import { aiService } from '../../services/ai.service';
 import type { ChatMessage, MessageAttachment } from '@types';
 
 export function ChatPage() {
@@ -49,6 +42,7 @@ export function ChatPage() {
     isTyping,
     createSession,
     sendMessage,
+    addAIResponse,
     saveToNotebook
   } = useChatStore();
   
@@ -57,8 +51,8 @@ export function ChatPage() {
   // Create or get active session
   useEffect(() => {
     if (!activeSession && user) {
-      const subject = currentContext.type === 'subject' ? currentContext.subject : undefined;
-      createSession('AI Study Session', subject);
+      const subjectId = currentContext.type === 'subject' ? currentContext.metadata?.subjectId : undefined;
+      createSession('AI Study Session', 'general', subjectId);
     }
   }, [activeSession, user, currentContext, createSession]);
   
@@ -69,10 +63,13 @@ export function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, isTyping]);
   
-  // Get quick actions based on subject
-  const quickActions = activeSession?.subject 
-    ? aiEducationService.getQuickActions(activeSession.subject)
-    : aiEducationService.getQuickActions();
+  // Mock quick actions for now
+  const quickActions = [
+    { id: '1', label: 'Homework Help', prompt: 'I need help with my homework', icon: '📚' },
+    { id: '2', label: 'Explain Concept', prompt: 'Can you explain', icon: '💡' },
+    { id: '3', label: 'Practice Problems', prompt: 'I want to practice', icon: '✏️' },
+    { id: '4', label: 'Exam Prep', prompt: 'Help me prepare for my exam', icon: '📝' }
+  ];
 
   const handleSend = async () => {
     if (!inputValue.trim() || !activeSession) return;
@@ -86,7 +83,17 @@ export function ChatPage() {
       textareaRef.current.style.height = 'auto';
     }
     
-    await sendMessage(message, attachments);
+    if (!activeSession) return;
+    
+    // Send user message
+    await sendMessage(activeSession.id, message, attachments);
+    
+    // Generate AI response
+    const thinking = await aiService.generateThinking(message);
+    const response = 'I understand you need help. Let me break this down for you...';
+    
+    // Add AI response
+    addAIResponse(activeSession.id, response, thinking);
     setAttachments([]); // Clear attachments after sending
   };
 
@@ -115,33 +122,42 @@ export function ChatPage() {
   };
   
   const handleSaveToNotebook = async (message: ChatMessage) => {
-    if (!message.thinking?.suggestedNotes.length || !activeSession?.subject) return;
+    if (!activeSession?.subjectId) return;
     
-    // Save the first suggested note
-    const suggestion = message.thinking.suggestedNotes[0];
-    const entry = await addNotebookEntry({
-      title: suggestion.title,
+    await addNotebookEntry({
+      userId: user?.id || 'current-user',
+      title: 'AI Generated Note',
       content: message.content,
-      type: suggestion.type,
-      subject: activeSession.subject,
-      tags: ['ai-generated', activeSession.subject.code.toLowerCase()],
-      isAIGenerated: true,
-      sourceMessageId: message.id,
-      sourceChatId: activeSession.id,
-      isFavorite: false,
-      isArchived: false,
-      order: 0
+      type: 'concept',
+      format: 'markdown',
+      subjectId: activeSession.subjectId,
+      metadata: {
+        isAIGenerated: true,
+        sourceType: 'chat',
+        sourceId: message.id,
+        gradeLevel: 10,
+        wordCount: message.content.split(' ').length,
+        studyCount: 0,
+        isFavorite: false,
+        isArchived: false
+      },
+      tags: ['ai-generated'],
+      attachments: [],
+      annotations: [],
+      status: 'complete',
+      visibility: 'private',
+      version: 1
     });
     
     await saveToNotebook(message.id);
   };
   
   const getMessageIcon = (message: ChatMessage) => {
-    if (message.type === 'user') return null;
+    if (message.role === 'user') return null;
     
-    if (message.thinking?.teachingStrategy.method === 'step-by-step') {
+    if (message.metadata.thinking?.approach === 'Step-by-step explanation with examples') {
       return <Calculator className="w-4 h-4" />;
-    } else if (message.thinking?.concepts.some(c => c.importance === 'core')) {
+    } else if (message.metadata.thinking?.complexity === 'complex') {
       return <Lightbulb className="w-4 h-4" />;
     }
     
@@ -163,7 +179,7 @@ export function ChatPage() {
           <div>
             <h2 className="font-semibold">AI Tutor</h2>
             <p className="text-xs text-gray-600">
-              {activeSession?.subject ? activeSession.subject.name : 'All Subjects'}
+              {activeSession?.subjectId || 'All Subjects'}
             </p>
           </div>
         </div>
@@ -206,9 +222,9 @@ export function ChatPage() {
             {chatMessages.map(message => (
               <div
                 key={message.id}
-                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} gap-3`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} gap-3`}
               >
-                {message.type === 'ai' && (
+                {message.role === 'assistant' && (
                   <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
                     {getMessageIcon(message) || <Sparkles className="w-4 h-4 text-purple-600" />}
                   </div>
@@ -216,7 +232,7 @@ export function ChatPage() {
                 
                 <div
                   className={`message-bubble max-w-[70%] sm:max-w-[80%] ${
-                    message.type === 'user'
+                    message.role === 'user'
                       ? 'bg-purple-600 text-white rounded-br-md'
                       : 'bg-white text-gray-900 rounded-bl-md shadow-sm'
                   }`}
@@ -228,7 +244,7 @@ export function ChatPage() {
                         <div 
                           key={att.id}
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                            message.type === 'user' 
+                            message.role === 'user' 
                               ? 'bg-white/20 text-white'
                               : 'bg-gray-100 text-gray-600'
                           }`}
@@ -245,33 +261,33 @@ export function ChatPage() {
                   
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   <p className={`text-xs mt-1 ${
-                    message.type === 'user' ? 'text-white/70' : 'text-gray-500'
+                    message.role === 'user' ? 'text-white/70' : 'text-gray-500'
                   }`}>
-                    {new Date(message.timestamp).toLocaleTimeString([], { 
+                    {new Date(message.createdAt).toLocaleTimeString([], { 
                       hour: '2-digit', 
                       minute: '2-digit' 
                     })}
                   </p>
                   
                   {/* AI Thinking Indicators */}
-                  {message.type === 'ai' && message.thinking && (
+                  {message.role === 'assistant' && message.metadata.thinking && (
                     <div className="mt-3 pt-3 border-t border-gray-100">
                       {/* Confidence Level */}
                       <div className="flex items-center gap-2 mb-2">
                         <div className={`w-2 h-2 rounded-full ${
-                          message.thinking.studentLevel.confidence === 'high' 
+                          message.metadata.thinking.complexity === 'simple' 
                             ? 'bg-green-500'
-                            : message.thinking.studentLevel.confidence === 'medium'
+                            : message.metadata.thinking.complexity === 'moderate'
                             ? 'bg-yellow-500'
                             : 'bg-red-500'
                         }`} />
                         <span className="text-xs text-gray-500">
-                          {message.thinking.studentLevel.confidence} confidence in understanding
+                          {message.metadata.thinking.complexity} complexity
                         </span>
                       </div>
                       
                       {/* Save to Notebook */}
-                      {message.thinking.suggestedNotes.length > 0 && !message.savedToNotebook && (
+                      {!message.metadata.isSavedToNotebook && (
                         <button
                           onClick={() => handleSaveToNotebook(message)}
                           className="flex items-center gap-2 text-xs text-purple-600 hover:text-purple-700 transition-colors"
@@ -281,7 +297,7 @@ export function ChatPage() {
                         </button>
                       )}
                       
-                      {message.savedToNotebook && (
+                      {message.metadata.isSavedToNotebook && (
                         <span className="flex items-center gap-2 text-xs text-green-600">
                           <BookOpen className="w-3 h-3" />
                           Saved to Notebook
@@ -291,7 +307,7 @@ export function ChatPage() {
                   )}
                 </div>
                 
-                {message.type === 'user' && (
+                {message.role === 'user' && (
                   <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-medium text-gray-600">
                       {user?.name?.charAt(0).toUpperCase()}

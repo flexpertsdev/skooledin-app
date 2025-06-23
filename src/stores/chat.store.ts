@@ -1,72 +1,105 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { 
+import type { 
   ChatMessage, 
   ChatSession, 
-  StudyContext, 
   MessageAttachment,
-  StructuredAIResponse 
+  AIThinking
 } from '@types';
-import { Subject } from '@types';
 
 interface ChatState {
   sessions: ChatSession[];
   activeSession: ChatSession | null;
-  messages: Record<string, ChatMessage[]>; // chatId -> messages
+  messages: Record<string, ChatMessage[]>; // sessionId -> messages
   isTyping: boolean;
-  studyContext: StudyContext;
   
   // Session Management
-  createSession: (title: string, subject?: Subject) => ChatSession;
+  createSession: (title: string, type?: ChatSession['type'], subjectId?: string) => ChatSession;
   setActiveSession: (sessionId: string) => void;
   deleteSession: (sessionId: string) => void;
   
   // Message Actions
-  sendMessage: (content: string, attachments?: MessageAttachment[]) => Promise<void>;
-  addMessage: (chatId: string, message: ChatMessage) => void;
-  updateMessageStatus: (chatId: string, messageId: string, status: ChatMessage['status']) => void;
-  
-  // Context Management
-  updateStudyContext: (context: Partial<StudyContext>) => void;
-  addAttachment: (attachment: MessageAttachment) => void;
-  removeAttachment: (attachmentId: string) => void;
+  sendMessage: (sessionId: string, content: string, attachments?: MessageAttachment[]) => Promise<void>;
+  addAIResponse: (sessionId: string, content: string, thinking?: AIThinking) => void;
+  updateMessageStatus: (sessionId: string, messageId: string, status: ChatMessage['status']) => void;
   
   // Notebook Integration
   saveToNotebook: (messageId: string) => Promise<void>;
   
   // Utility
-  clearChat: (chatId: string) => void;
+  clearChat: (sessionId: string) => void;
   getRecentSessions: (limit?: number) => ChatSession[];
 }
-
-const defaultStudyContext: StudyContext = {
-  activeAssignments: [],
-  recentTopics: [],
-  strugglingConcepts: [],
-  masteredConcepts: [],
-  currentGradeLevel: 9,
-  subjects: []
-};
 
 export const useChatStore = create<ChatState>()(
   persist(
     (set, get) => ({
-      sessions: [],
+      sessions: [
+        {
+          id: 'general',
+          userId: 'current-user',
+          title: 'General Chat',
+          type: 'general',
+          metadata: {
+            context: {
+              activeAssignments: [],
+              recentTopics: [],
+              strugglingConcepts: [],
+              masteredConcepts: [],
+              currentGradeLevel: 10,
+              subjects: []
+            },
+            tags: []
+          },
+          isActive: true,
+          lastActivityAt: new Date(),
+          messageCount: 1,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ],
       activeSession: null,
-      messages: {},
+      messages: {
+        general: [
+          {
+            id: '1',
+            sessionId: 'general',
+            content: "Hello! I'm your AI study buddy. How can I help you today?",
+            role: 'assistant',
+            status: 'delivered',
+            attachments: [],
+            metadata: {},
+            isEdited: false,
+            createdAt: new Date(Date.now() - 1000 * 60 * 5),
+            updatedAt: new Date(Date.now() - 1000 * 60 * 5)
+          }
+        ]
+      },
       isTyping: false,
-      studyContext: defaultStudyContext,
       
-      createSession: (title, subject) => {
+      createSession: (title, type = 'general', subjectId) => {
         const session: ChatSession = {
           id: `chat-${Date.now()}`,
-          userId: 'current-user', // Would come from auth
+          userId: 'current-user',
           title,
-          subject,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          type,
+          subjectId,
+          metadata: {
+            context: {
+              activeAssignments: [],
+              recentTopics: [],
+              strugglingConcepts: [],
+              masteredConcepts: [],
+              currentGradeLevel: 10,
+              subjects: []
+            },
+            tags: []
+          },
+          isActive: true,
+          lastActivityAt: new Date(),
           messageCount: 0,
-          isActive: true
+          createdAt: new Date(),
+          updatedAt: new Date()
         };
         
         set(state => ({
@@ -96,134 +129,101 @@ export const useChatStore = create<ChatState>()(
         });
       },
       
-      sendMessage: async (content, attachments = []) => {
-        const { activeSession, addMessage, updateStudyContext } = get();
-        if (!activeSession) return;
-        
-        // Create user message
-        const userMessage: ChatMessage = {
-          id: `msg-${Date.now()}`,
-          chatId: activeSession.id,
+      sendMessage: async (sessionId, content, attachments = []) => {
+        const message: ChatMessage = {
+          id: Date.now().toString(),
+          sessionId,
           content,
-          type: 'user',
-          timestamp: new Date(),
+          role: 'user',
           status: 'sending',
-          attachments
+          attachments: attachments || [],
+          metadata: {},
+          isEdited: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
         };
         
-        addMessage(activeSession.id, userMessage);
-        set({ isTyping: true });
-        
-        try {
-          // Update message status
-          set(state => ({
-            messages: {
-              ...state.messages,
-              [activeSession.id]: state.messages[activeSession.id].map(msg =>
-                msg.id === userMessage.id ? { ...msg, status: 'sent' } : msg
-              )
-            }
-          }));
-          
-          // Simulate AI response (would be replaced with actual AI service call)
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          
-          const aiResponse: ChatMessage = {
-            id: `msg-${Date.now()}-ai`,
-            chatId: activeSession.id,
-            content: "I understand you're asking about [topic]. Let me guide you through this step by step...",
-            type: 'ai',
-            timestamp: new Date(),
-            status: 'delivered',
-            thinking: {
-              concepts: [
-                { name: 'Main Concept', importance: 'core', studentKnows: false }
-              ],
-              teachingStrategy: {
-                method: 'step-by-step',
-                reason: 'Breaking down complex topic'
-              },
-              studentLevel: {
-                understanding: 70,
-                confidence: 'medium',
-                misconceptions: []
-              },
-              suggestedNotes: [
-                {
-                  title: 'Key Concept Summary',
-                  type: 'concept',
-                  importance: 'high'
-                }
-              ]
-            }
-          };
-          
-          addMessage(activeSession.id, aiResponse);
-          
-          // Update session
-          set(state => ({
-            sessions: state.sessions.map(s =>
-              s.id === activeSession.id
-                ? {
-                    ...s,
-                    updatedAt: new Date(),
-                    lastMessage: content.substring(0, 50) + '...',
-                    messageCount: s.messageCount + 2
-                  }
-                : s
-            )
-          }));
-          
-        } catch (error) {
-          console.error('Failed to send message:', error);
-          // Update message status to error
-          set(state => ({
-            messages: {
-              ...state.messages,
-              [activeSession.id]: state.messages[activeSession.id].map(msg =>
-                msg.id === userMessage.id ? { ...msg, status: 'error' } : msg
-              )
-            }
-          }));
-        } finally {
-          set({ isTyping: false });
-        }
-      },
-      
-      addMessage: (chatId, message) => {
         set(state => ({
           messages: {
             ...state.messages,
-            [chatId]: [...(state.messages[chatId] || []), message]
+            [sessionId]: [...(state.messages[sessionId] || []), message]
           }
+        }));
+        
+        // Update message status to sent
+        setTimeout(() => {
+          set(state => ({
+            messages: {
+              ...state.messages,
+              [sessionId]: state.messages[sessionId].map(m =>
+                m.id === message.id ? { ...m, status: 'sent' as const } : m
+              )
+            }
+          }));
+        }, 100);
+        
+        // Update session
+        set(state => ({
+          sessions: state.sessions.map(s =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  lastActivityAt: new Date(),
+                  messageCount: s.messageCount + 1,
+                  updatedAt: new Date()
+                }
+              : s
+          )
         }));
       },
       
-      updateMessageStatus: (chatId, messageId, status) => {
+      addAIResponse: (sessionId, content, thinking) => {
+        const aiMessage: ChatMessage = {
+          id: Date.now().toString(),
+          sessionId,
+          content,
+          role: 'assistant',
+          status: 'delivered',
+          attachments: [],
+          metadata: {
+            thinking
+          },
+          isEdited: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
         set(state => ({
           messages: {
             ...state.messages,
-            [chatId]: state.messages[chatId].map(msg =>
+            [sessionId]: [...(state.messages[sessionId] || []), aiMessage]
+          }
+        }));
+        
+        // Update session
+        set(state => ({
+          sessions: state.sessions.map(s =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  lastActivityAt: new Date(),
+                  messageCount: s.messageCount + 1,
+                  updatedAt: new Date()
+                }
+              : s
+          )
+        }));
+      },
+      
+      updateMessageStatus: (sessionId, messageId, status) => {
+        set(state => ({
+          messages: {
+            ...state.messages,
+            [sessionId]: state.messages[sessionId].map(msg =>
               msg.id === messageId ? { ...msg, status } : msg
             )
           }
         }));
-      },
-      
-      updateStudyContext: (context) => {
-        set(state => ({
-          studyContext: { ...state.studyContext, ...context }
-        }));
-      },
-      
-      addAttachment: (attachment) => {
-        // This would be implemented when handling attachments
-        console.log('Adding attachment:', attachment);
-      },
-      
-      removeAttachment: (attachmentId) => {
-        // This would be implemented when handling attachments
-        console.log('Removing attachment:', attachmentId);
       },
       
       saveToNotebook: async (messageId) => {
@@ -239,16 +239,24 @@ export const useChatStore = create<ChatState>()(
             messages: {
               ...state.messages,
               [activeSession.id]: state.messages[activeSession.id].map(msg =>
-                msg.id === messageId ? { ...msg, savedToNotebook: true } : msg
+                msg.id === messageId 
+                  ? { 
+                      ...msg, 
+                      metadata: { 
+                        ...msg.metadata, 
+                        isSavedToNotebook: true 
+                      } 
+                    } 
+                  : msg
               )
             }
           }));
         }
       },
       
-      clearChat: (chatId) => {
+      clearChat: (sessionId) => {
         set(state => ({
-          messages: { ...state.messages, [chatId]: [] }
+          messages: { ...state.messages, [sessionId]: [] }
         }));
       },
       
@@ -262,8 +270,7 @@ export const useChatStore = create<ChatState>()(
       name: 'skooledin-chat',
       partialize: (state) => ({
         sessions: state.sessions,
-        messages: state.messages,
-        studyContext: state.studyContext
+        messages: state.messages
       })
     }
   )

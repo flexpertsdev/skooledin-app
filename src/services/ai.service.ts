@@ -1,303 +1,271 @@
-import { 
-  ChatMessage, 
-  StudyContext, 
-  StructuredAIResponse,
-  QuickAction,
+import type {
+  AIThinking,
+  HomeworkHelperRequest,
+  HomeworkHelperResponse,
+  SolutionStep,
+  ConceptExplanation,
   PracticeProblem,
-  NotebookEntry,
-  MessageAttachment,
-  AIThinking
+  ThinkingStep,
+  ContentAnalysis,
+  ConceptExtraction,
+  DifficultyAnalysis,
+  LearningRecommendation,
+  GeneratedStudyTool,
+  StudyToolRequest,
+  WritingAssistantRequest,
+  WritingAssistantResponse,
+  WritingFeedback,
+  RubricBreakdown
 } from '@types';
-import { Subject } from '@types';
 
-class AIEducationService {
-  private mockResponses = {
-    greeting: "Hi! I'm here to help you learn. What would you like to work on today?",
-    homework: "I see you need help with homework. Let's break this down step by step. What specific part are you finding challenging?",
-    concept: "Let me explain this concept in a way that makes sense. First, let's make sure we understand the basics...",
-    practice: "Great choice! Practice is key to mastering any subject. Let me create some problems for you...",
-    exam: "Preparing for an exam? Let's create a study plan and review the key concepts you'll need to know."
-  };
+// Mock AI service for education - would be replaced with actual API calls
+export class AIEducationService {
+  // Process homework help request
+  async getHomeworkHelp(_request: HomeworkHelperRequest): Promise<HomeworkHelperResponse> {
+    // Simulate processing time
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
-  async getEducationalResponse(
-    messages: ChatMessage[],
-    context: StudyContext,
-    mode: 'tutoring' | 'practice' | 'explanation' = 'tutoring'
-  ): Promise<StructuredAIResponse> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-
-    const lastMessage = messages[messages.length - 1];
-    const content = lastMessage.content.toLowerCase();
-    
-    // Determine response type based on content
-    let responseContent = this.mockResponses.greeting;
-    let teachingMethod: AIThinking['teachingStrategy']['method'] = 'explanation';
-    
-    if (content.includes('homework') || content.includes('assignment')) {
-      responseContent = this.mockResponses.homework;
-      teachingMethod = 'step-by-step';
-    } else if (content.includes('explain') || content.includes('what is')) {
-      responseContent = this.mockResponses.concept;
-      teachingMethod = 'explanation';
-    } else if (content.includes('practice') || content.includes('problems')) {
-      responseContent = this.mockResponses.practice;
-      teachingMethod = 'example-based';
-    } else if (content.includes('test') || content.includes('exam')) {
-      responseContent = this.mockResponses.exam;
-      teachingMethod = 'socratic';
-    }
-
-    // Process attachments if any
-    if (lastMessage.attachments && lastMessage.attachments.length > 0) {
-      responseContent = `I see you've attached ${lastMessage.attachments.length} item(s). Let me analyze them and help you with this. ${responseContent}`;
-    }
-
-    // Create thinking data
-    const thinking: AIThinking = {
-      concepts: [
-        {
-          name: 'Main Topic',
-          importance: 'core',
-          studentKnows: false
-        }
-      ],
-      teachingStrategy: {
-        method: teachingMethod,
-        reason: 'Based on the student\'s question and current understanding level'
-      },
-      studentLevel: {
-        understanding: 70,
-        confidence: 'medium',
-        misconceptions: []
-      },
-      suggestedNotes: [
-        {
-          title: 'Key Concepts Summary',
-          type: 'concept',
-          importance: 'high'
-        }
-      ]
-    };
-
-    // Generate practice problems if requested
-    let practiceProblems: PracticeProblem[] = [];
-    if (mode === 'practice' || content.includes('practice')) {
-      practiceProblems = [
-        {
-          id: `prob-${Date.now()}-1`,
-          question: 'Sample practice problem 1',
-          type: 'multiple-choice',
-          difficulty: 'medium',
-          hints: ['Think about the basic concept', 'Remember the formula'],
-          solution: 'The answer is A because...',
-          explanation: 'This tests your understanding of the core concept.',
-          options: [
-            { id: 'a', text: 'Option A', isCorrect: true },
-            { id: 'b', text: 'Option B', isCorrect: false },
-            { id: 'c', text: 'Option C', isCorrect: false },
-            { id: 'd', text: 'Option D', isCorrect: false }
-          ]
-        }
-      ];
-    }
-
-    return {
-      content: responseContent,
-      thinking,
-      suggestedFollowUp: [
-        'Can you give me an example?',
-        'How does this relate to what we learned before?',
-        'Can I try a practice problem?'
-      ],
-      practiceProblems
-    };
-  }
-
-  getQuickActions(subject?: Subject): QuickAction[] {
-    const baseActions: QuickAction[] = [
+    const steps: SolutionStep[] = [
       {
-        id: 'homework-help',
-        label: 'Homework Help',
-        prompt: 'I need help with my homework',
-        icon: '📚',
-        category: 'homework'
+        stepNumber: 1,
+        description: 'Understand the problem',
+        action: 'Read and identify what we need to find',
+        result: 'We need to solve for x',
+        explanation: 'Breaking down the problem helps us focus on the goal'
       },
       {
-        id: 'explain-concept',
-        label: 'Explain Concept',
-        prompt: 'Can you explain',
-        icon: '💡',
-        category: 'concept'
-      },
-      {
-        id: 'practice-problems',
-        label: 'Practice Problems',
-        prompt: 'I want to practice',
-        icon: '✏️',
-        category: 'practice'
-      },
-      {
-        id: 'exam-prep',
-        label: 'Exam Prep',
-        prompt: 'Help me prepare for my exam',
-        icon: '📝',
-        category: 'exam'
+        stepNumber: 2,
+        description: 'Apply the relevant formula',
+        action: 'Use the quadratic formula',
+        formula: 'x = (-b ± √(b² - 4ac)) / 2a',
+        result: 'x = 3 or x = -2'
       }
     ];
 
-    // Add subject-specific actions if a subject is provided
-    if (subject) {
-      switch (subject.code.toLowerCase()) {
-        case 'math':
-          baseActions.push({
-            id: 'solve-equation',
-            label: 'Solve Equation',
-            prompt: 'Help me solve this equation:',
-            icon: '🔢',
-            category: 'homework'
-          });
-          break;
-        case 'science':
-          baseActions.push({
-            id: 'lab-report',
-            label: 'Lab Report',
-            prompt: 'Help me with my lab report on',
-            icon: '🧪',
-            category: 'homework'
-          });
-          break;
-        case 'english':
-          baseActions.push({
-            id: 'essay-help',
-            label: 'Essay Help',
-            prompt: 'Help me write an essay about',
-            icon: '✍️',
-            category: 'homework'
-          });
-          break;
+    const concepts: ConceptExplanation[] = [
+      {
+        concept: 'Quadratic Equations',
+        explanation: 'An equation of the form ax² + bx + c = 0',
+        examples: ['x² + 5x + 6 = 0', '2x² - 3x - 1 = 0'],
+        relatedTo: ['Factoring', 'Graphing Parabolas']
       }
-    }
+    ];
 
-    return baseActions;
-  }
-
-  async generateNotebookEntry(
-    type: NotebookEntry['type'],
-    content: string,
-    subject: Subject
-  ): Promise<Partial<NotebookEntry>> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Generate title based on content
-    const title = this.generateTitle(content, type);
-    
-    // Extract key concepts as tags
-    const tags = this.extractTags(content, subject);
+    const similarProblems: PracticeProblem[] = [
+      {
+        question: 'Solve: x² + 3x - 10 = 0',
+        difficulty: 'same',
+        hints: ['Try factoring first', 'Look for two numbers that multiply to -10 and add to 3'],
+        solution: 'x = 2 or x = -5'
+      }
+    ];
 
     return {
-      title,
-      content: this.formatContent(content, type),
-      type,
-      tags,
-      difficulty: 'medium',
-      gradeLevel: 9 // Would be determined by user profile
+      solution: 'The solution to the equation is x = 3 or x = -2',
+      steps,
+      concepts,
+      similarProblems,
+      confidence: 0.95,
+      warnings: []
     };
   }
 
-  async generatePracticeProblems(
-    subject: Subject,
-    topic: string,
-    difficulty: 'easy' | 'medium' | 'hard',
-    count: number
-  ): Promise<PracticeProblem[]> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    return Array.from({ length: count }, (_, i) => ({
-      id: `prob-${Date.now()}-${i}`,
-      question: `${topic} practice problem ${i + 1}`,
-      type: i % 2 === 0 ? 'multiple-choice' : 'short-answer',
-      difficulty,
-      hints: [`Hint 1 for problem ${i + 1}`, `Hint 2 for problem ${i + 1}`],
-      solution: `Solution for problem ${i + 1}`,
-      explanation: `This problem tests your understanding of ${topic}.`,
-      correctAnswer: `Answer ${i + 1}`,
-      options: i % 2 === 0 ? [
-        { id: 'a', text: `Option A for problem ${i + 1}`, isCorrect: i === 0 },
-        { id: 'b', text: `Option B for problem ${i + 1}`, isCorrect: i === 1 },
-        { id: 'c', text: `Option C for problem ${i + 1}`, isCorrect: i === 2 },
-        { id: 'd', text: `Option D for problem ${i + 1}`, isCorrect: i > 2 }
-      ] : undefined
-    }));
-  }
-
-  private generateTitle(content: string, type: NotebookEntry['type']): string {
-    // Simple title generation - in real app would use AI
-    const words = content.split(' ').slice(0, 5).join(' ');
-    const typeLabels = {
-      concept: 'Concept:',
-      formula: 'Formula:',
-      vocabulary: 'Vocab:',
-      summary: 'Summary:',
-      practice: 'Practice:',
-      example: 'Example:',
-      quiz: 'Quiz:',
-      flashcard: 'Flashcard:'
-    };
-    
-    return `${typeLabels[type]} ${words}...`;
-  }
-
-  private extractTags(content: string, subject: Subject): string[] {
-    // Simple tag extraction - in real app would use NLP
-    const tags = [subject.code.toLowerCase()];
-    
-    // Add some mock tags based on content
-    if (content.includes('equation')) tags.push('equations');
-    if (content.includes('formula')) tags.push('formulas');
-    if (content.includes('definition')) tags.push('definitions');
-    if (content.includes('example')) tags.push('examples');
-    
-    return tags;
-  }
-
-  private formatContent(content: string, type: NotebookEntry['type']): string {
-    // Add formatting based on type
-    switch (type) {
-      case 'concept':
-        return `## Concept\n\n${content}\n\n### Key Points\n- [Add key points here]`;
-      case 'formula':
-        return `## Formula\n\n\`\`\`\n${content}\n\`\`\`\n\n### Variables\n- [Define variables]`;
-      case 'vocabulary':
-        return `## Term\n\n**${content}**\n\n### Definition\n[Add definition]\n\n### Example\n[Add example]`;
-      default:
-        return content;
-    }
-  }
-
-  async processAttachments(attachments?: MessageAttachment[]): Promise<string> {
-    if (!attachments || attachments.length === 0) return '';
-    
-    const contexts = await Promise.all(attachments.map(async (att) => {
-      switch (att.type) {
-        case 'notebook':
-          return `[Notebook Entry: ${att.title}]\n${att.preview || 'Content attached'}`;
-        case 'assignment':
-          return `[Assignment: ${att.title}]\n${att.preview || 'Assignment details attached'}`;
-        case 'document':
-          return `[Document: ${att.title}]`;
-        case 'image':
-          return `[Image: ${att.title}]`;
-        default:
-          return '';
+  // Generate thinking process
+  async generateThinking(_context: string): Promise<AIThinking> {
+    const steps: ThinkingStep[] = [
+      {
+        id: '1',
+        type: 'analysis',
+        description: 'Analyzing the student\'s question and context',
+        confidence: 0.9,
+        subSteps: [
+          'Identifying the subject area',
+          'Determining the difficulty level',
+          'Checking for prerequisite knowledge'
+        ]
+      },
+      {
+        id: '2',
+        type: 'planning',
+        description: 'Planning the best approach to explain',
+        confidence: 0.85,
+        subSteps: [
+          'Choosing appropriate examples',
+          'Structuring the explanation',
+          'Preparing visual aids if needed'
+        ]
       }
-    }));
+    ];
+
+    return {
+      steps,
+      duration: 1500,
+      complexity: 'moderate',
+      approach: 'Step-by-step explanation with examples'
+    };
+  }
+
+  // Analyze content
+  async analyzeContent(_content: string): Promise<ContentAnalysis> {
+    const concepts: ConceptExtraction[] = [
+      {
+        concept: 'Photosynthesis',
+        definition: 'The process by which plants convert light energy into chemical energy',
+        importance: 'core',
+        prerequisites: ['Cell Structure', 'Chemical Reactions'],
+        relatedConcepts: ['Cellular Respiration', 'Carbon Cycle']
+      }
+    ];
+
+    const difficulty: DifficultyAnalysis = {
+      overall: 'medium',
+      factors: [
+        {
+          name: 'Vocabulary',
+          score: 7,
+          description: 'Contains scientific terms that may be challenging'
+        },
+        {
+          name: 'Concept Complexity',
+          score: 6,
+          description: 'Multiple interconnected processes to understand'
+        }
+      ],
+      recommendedGradeLevel: 9,
+      readabilityScore: 65
+    };
+
+    const suggestions: LearningRecommendation[] = [
+      {
+        type: 'prerequisite',
+        title: 'Review Cell Structure',
+        description: 'Understanding chloroplasts is essential',
+        resources: ['Cell Biology Chapter 3'],
+        estimatedTime: 30
+      }
+    ];
+
+    return {
+      summary: 'This content covers the fundamentals of photosynthesis in plants',
+      keyPoints: [
+        'Light-dependent reactions occur in thylakoids',
+        'Light-independent reactions occur in the stroma',
+        'Overall equation: 6CO₂ + 6H₂O + light → C₆H₁₂O₆ + 6O₂'
+      ],
+      concepts,
+      difficulty,
+      suggestions
+    };
+  }
+
+  // Generate study tools
+  async generateStudyTool(request: StudyToolRequest): Promise<GeneratedStudyTool> {
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const flashcards = [
+      {
+        front: 'What is photosynthesis?',
+        back: 'The process by which plants convert light energy into chemical energy (glucose)',
+        difficulty: 'easy'
+      },
+      {
+        front: 'Where do light-dependent reactions occur?',
+        back: 'In the thylakoids of chloroplasts',
+        difficulty: 'medium'
+      }
+    ];
+
+    return {
+      id: `tool-${Date.now()}`,
+      type: request.type,
+      title: 'Photosynthesis Study Cards',
+      description: 'Master the key concepts of photosynthesis',
+      content: {
+        items: flashcards,
+        instructions: 'Review each card, then test yourself by hiding the answer',
+        resources: ['Chapter 8: Photosynthesis']
+      },
+      metadata: {
+        difficulty: request.options.difficulty || 'medium',
+        estimatedTime: 20,
+        topics: ['photosynthesis', 'plant biology'],
+        skills: ['recall', 'understanding'],
+        successCriteria: 'Can explain all cards without looking at answers'
+      },
+      sourceIds: request.sourceIds,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  // Writing assistant
+  async assistWithWriting(request: WritingAssistantRequest): Promise<WritingAssistantResponse> {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const feedback: WritingFeedback = {
+      strengths: [
+        'Clear thesis statement',
+        'Good use of topic sentences',
+        'Logical flow between paragraphs'
+      ],
+      improvements: [
+        'Add more specific examples to support arguments',
+        'Vary sentence structure for better flow',
+        'Strengthen the conclusion'
+      ],
+      grammar: [],
+      style: [
+        {
+          type: 'clarity',
+          text: 'This shows that',
+          suggestion: 'This demonstrates',
+          reason: 'More precise and academic language'
+        }
+      ],
+      structure: {
+        currentStructure: ['Introduction', 'Body Paragraph 1', 'Body Paragraph 2', 'Conclusion'],
+        suggestedStructure: ['Introduction', 'Body Paragraph 1', 'Body Paragraph 2', 'Body Paragraph 3', 'Conclusion'],
+        issues: ['Consider adding another body paragraph to fully develop your argument']
+      }
+    };
+
+    const score: RubricBreakdown[] = [
+      {
+        criterion: 'Thesis & Arguments',
+        score: 8,
+        maxScore: 10,
+        feedback: 'Strong thesis, but arguments could use more evidence'
+      },
+      {
+        criterion: 'Organization',
+        score: 9,
+        maxScore: 10,
+        feedback: 'Excellent structure and flow'
+      }
+    ];
+
+    return {
+      content: request.content || 'Your essay content here...',
+      feedback,
+      suggestions: [],
+      score: {
+        totalScore: 17,
+        maxScore: 20,
+        breakdown: score
+      }
+    };
+  }
+
+  // Simulate streaming response
+  async *streamResponse(_prompt: string): AsyncGenerator<string> {
+    const words = 'I understand you need help with this problem. Let me break it down step by step for you.'.split(' ');
     
-    return contexts.filter(Boolean).join('\n\n');
+    for (const word of words) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      yield word + ' ';
+    }
   }
 }
 
 // Export singleton instance
-export const aiEducationService = new AIEducationService();
+export const aiService = new AIEducationService();

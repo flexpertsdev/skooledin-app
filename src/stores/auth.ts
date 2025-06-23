@@ -42,6 +42,29 @@ export const useAuthStore = create<AuthState>()(
             name: email.split('@')[0],
             role: email.includes('teacher') ? UserRole.TEACHER : 
                   email.includes('parent') ? UserRole.PARENT : UserRole.STUDENT,
+            isActive: true,
+            preferences: {
+              theme: 'light',
+              language: 'en',
+              notifications: {
+                email: true,
+                push: true,
+                sms: false,
+                inApp: true,
+                digest: 'weekly',
+                types: {
+                  assignments: true,
+                  grades: true,
+                  messages: true,
+                  reminders: true
+                }
+              },
+              privacy: {
+                profileVisibility: 'school',
+                shareProgress: true,
+                allowAnalytics: true
+              }
+            },
             createdAt: new Date(),
             updatedAt: new Date()
           };

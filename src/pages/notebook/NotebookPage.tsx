@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -7,31 +7,27 @@ import {
   Star,
   StarOff,
   Archive,
-  Trash2,
   FolderOpen,
   FileText,
   Hash,
-  Filter,
-  ChevronRight,
   Sparkles,
   Calculator,
   Languages,
-  Flask,
-  Clock,
-  Edit,
-  Download
+  Beaker,
+  Clock
 } from 'lucide-react';
 import { useNotebookStore } from '@stores/notebook.store';
 import { useContextStore } from '@stores/context.store';
 import { Button } from '@components/common/Button';
-import type { NotebookEntry, NotebookFolder } from '@types';
+import type { NotebookEntry } from '@types';
 import { formatDistanceToNow } from 'date-fns';
 
 export function NotebookPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
-  const [showFolders, setShowFolders] = useState(true);
-  const [selectedEntry, setSelectedEntry] = useState<NotebookEntry | null>(null);
+  const [showFolders] = useState(true);
+  const [_selectedEntry, setSelectedEntry] = useState<NotebookEntry | null>(null);
+  const [selectedFolder] = useState<string | null>(null);
   
   const { currentContext } = useContextStore();
   const {
@@ -42,17 +38,15 @@ export function NotebookPage() {
     filterByFolder,
     toggleFavorite,
     archiveEntry,
-    deleteEntry,
     recordView,
     getRecentEntries,
-    getFavorites,
-    selectedFolder
+    getFavorites
   } = useNotebookStore();
   
   // Filter entries based on current context
   useEffect(() => {
-    if (currentContext.type === 'subject' && currentContext.subject) {
-      filterBySubject(currentContext.subject);
+    if (currentContext.type === 'subject' && currentContext.metadata?.subjectId) {
+      filterBySubject(currentContext.metadata.subjectId);
     } else {
       filterBySubject(null);
     }
@@ -65,9 +59,9 @@ export function NotebookPage() {
   
   // Get filtered entries
   const displayEntries = entries.filter(entry => {
-    if (!entry.isArchived) {
+    if (!entry.metadata.isArchived) {
       if (selectedType === 'all') return true;
-      if (selectedType === 'favorites') return entry.isFavorite;
+      if (selectedType === 'favorites') return entry.metadata.isFavorite;
       return entry.type === selectedType;
     }
     return false;
@@ -75,7 +69,7 @@ export function NotebookPage() {
   
   // Group entries by folder
   const entriesByFolder = displayEntries.reduce((acc, entry) => {
-    const folderId = entry.folderId || 'unfiled';
+    const folderId = entry.metadata.folderId || 'unfiled';
     if (!acc[folderId]) acc[folderId] = [];
     acc[folderId].push(entry);
     return acc;
@@ -87,10 +81,14 @@ export function NotebookPage() {
       formula: <Calculator className="w-4 h-4" />,
       vocabulary: <Languages className="w-4 h-4" />,
       summary: <FileText className="w-4 h-4" />,
-      practice: <Flask className="w-4 h-4" />,
+      practice: <Beaker className="w-4 h-4" />,
       example: <BookOpen className="w-4 h-4" />,
       quiz: <Hash className="w-4 h-4" />,
-      flashcard: <FileText className="w-4 h-4" />
+      flashcard: <FileText className="w-4 h-4" />,
+      outline: <FileText className="w-4 h-4" />,
+      mindmap: <FileText className="w-4 h-4" />,
+      checklist: <FileText className="w-4 h-4" />,
+      reference: <FileText className="w-4 h-4" />
     };
     return icons[type] || <FileText className="w-4 h-4" />;
   };
@@ -104,7 +102,11 @@ export function NotebookPage() {
       practice: 'text-red-600 bg-red-100',
       example: 'text-indigo-600 bg-indigo-100',
       quiz: 'text-pink-600 bg-pink-100',
-      flashcard: 'text-yellow-600 bg-yellow-100'
+      flashcard: 'text-yellow-600 bg-yellow-100',
+      outline: 'text-gray-600 bg-gray-100',
+      mindmap: 'text-teal-600 bg-teal-100',
+      checklist: 'text-cyan-600 bg-cyan-100',
+      reference: 'text-amber-600 bg-amber-100'
     };
     return colors[type] || 'text-gray-600 bg-gray-100';
   };
@@ -280,7 +282,7 @@ export function NotebookPage() {
                           }}
                           className="p-1.5 hover:bg-gray-100 rounded transition-colors"
                         >
-                          {entry.isFavorite ? (
+                          {entry.metadata.isFavorite ? (
                             <Star className="w-4 h-4 text-yellow-500 fill-current" />
                           ) : (
                             <StarOff className="w-4 h-4 text-gray-400" />
@@ -327,14 +329,14 @@ export function NotebookPage() {
                     
                     {/* Footer */}
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>{entry.subject.name}</span>
+                      <span>{entry.subjectId}</span>
                       <span>
                         {formatDistanceToNow(new Date(entry.updatedAt), { addSuffix: true })}
                       </span>
                     </div>
                     
                     {/* AI Generated Badge */}
-                    {entry.isAIGenerated && (
+                    {entry.metadata.isAIGenerated && (
                       <div className="mt-2 flex items-center gap-1 text-xs text-purple-600">
                         <Sparkles className="w-3 h-3" />
                         <span>AI Generated</span>
@@ -361,7 +363,7 @@ export function NotebookPage() {
           </div>
           <div>
             <div className="text-2xl font-bold text-gray-900">
-              {entries.filter(e => e.isAIGenerated).length}
+              {entries.filter(e => e.metadata.isAIGenerated).length}
             </div>
             <div className="text-xs text-gray-500">AI Generated</div>
           </div>

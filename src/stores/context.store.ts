@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Context, Subject } from '@types';
+import type { Context } from '@types';
 
 interface ContextState {
   currentContext: Context;
@@ -23,7 +23,7 @@ const defaultContext: Context = {
 
 export const useContextStore = create<ContextState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       currentContext: defaultContext,
       availableContexts: [defaultContext],
       
