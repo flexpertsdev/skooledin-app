@@ -1,7 +1,5 @@
-import type { 
-  ChatWithContextOptions,
-  AIThinking 
-} from '@/types';
+import type { AIThinking } from '@/types';
+import type { ChatWithContextOptions } from './anthropic.service';
 
 class NetlifyAnthropicService {
   private baseUrl: string;
