@@ -19,6 +19,7 @@ export interface NotebookEntry extends BaseEntity {
   childIds?: string[]; // for nested notes
   version: number;
   versionHistory?: NoteVersion[];
+  lastAccessedAt?: Date;
 }
 
 // Notebook Organization

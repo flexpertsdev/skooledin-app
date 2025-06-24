@@ -12,8 +12,31 @@ This is a self-executing build plan to implement a comprehensive context system 
 
 ## Build Phases
 
-### Phase 2: Move to Firebase Storage (Priority: High)
-**Goal**: Migrate from localStorage to Firebase for persistence across devices
+### Phase 1.5: Implement Dexie Storage Layer (Priority: CRITICAL)
+**Goal**: Upgrade from localStorage (5MB) to IndexedDB (GBs) for scalable local storage
+
+#### 1.5.1 Database Schema Setup
+```typescript
+// src/lib/db.ts
+- Chat messages with full-text search
+- Notebook entries with embeddings
+- Learning profiles with analytics
+- File attachments support
+```
+
+**Tasks**:
+1. Install and configure Dexie
+2. Design optimal schema
+3. Create database migrations
+4. Add TypeScript types
+
+**Verification**:
+- Can store 1000+ messages without issues
+- Search returns results in <100ms
+- Files up to 50MB can be stored
+
+### Phase 2: Move to Firebase Storage (Priority: Medium - Premium Feature)
+**Goal**: Add cloud sync for premium users only
 
 #### 2.1 Chat Messages to Firestore
 ```typescript

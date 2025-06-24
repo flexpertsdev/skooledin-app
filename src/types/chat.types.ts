@@ -59,6 +59,7 @@ export interface MessageMetadata {
   tokenCount?: number;
   notebookRefs?: string[]; // notebookEntryIds
   isSavedToNotebook?: boolean;
+  debug?: any; // Debug information for development
 }
 
 export interface AttachmentMetadata {

@@ -91,6 +91,28 @@ export function ChatPage() {
     
     if (!activeSession) return;
     
+    // Get recent messages for context (last 5)
+    const recentMessages = chatMessages.slice(-5).map(msg => ({
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.createdAt
+    }));
+    
+    // Build context message
+    let contextualMessage = message;
+    if (currentContext.type !== 'all') {
+      contextualMessage = `[Context: ${currentContext.name} - ${currentContext.type}]\n${message}`;
+    }
+    
+    // Store debug info
+    const debugInfo = {
+      sentContext: contextualMessage,
+      subject: currentContext.name,
+      type: currentContext.type,
+      messageCount: recentMessages.length,
+      timestamp: new Date().toISOString()
+    };
+    
     // Send user message with debug info
     await sendMessage(activeSession.id, message, attachments, debugMode ? debugInfo : undefined);
     
@@ -98,28 +120,6 @@ export function ChatPage() {
     setIsTyping(true);
     
     try {
-      // Build context message
-      let contextualMessage = message;
-      if (currentContext.type !== 'all') {
-        contextualMessage = `[Context: ${currentContext.name} - ${currentContext.type}]\n${message}`;
-      }
-      
-      // Store debug info
-      const debugInfo = {
-        sentContext: contextualMessage,
-        subject: currentContext.name,
-        type: currentContext.type,
-        messageCount: recentMessages.length,
-        timestamp: new Date().toISOString()
-      };
-      
-      // Get recent messages for context (last 5)
-      const recentMessages = chatMessages.slice(-5).map(msg => ({
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.createdAt
-      }));
-      
       // Get AI response from Anthropic via Cloud Function
       const { content, metadata } = await anthropicService.chatWithContext({
         message: contextualMessage,

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@stores/auth';
 import { AppShell } from '@components/layout/AppShell';
+import { DatabaseMigration } from '@components/common/DatabaseMigration';
 import { LoginPage } from './pages/auth/LoginPage';
 import { FeedPage } from './pages/feed/FeedPage';
 import { ChatPage } from './pages/chat/ChatPage';
@@ -31,8 +32,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
+      <DatabaseMigration>
+        <BrowserRouter>
+          <Routes>
           {/* Auth Routes */}
           <Route path="/login" element={<LoginPage />} />
           
@@ -54,6 +56,7 @@ function App() {
           <Route path="*" element={<Navigate to="/feed" replace />} />
         </Routes>
       </BrowserRouter>
+      </DatabaseMigration>
     </QueryClientProvider>
   );
 }
