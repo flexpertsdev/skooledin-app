@@ -95,9 +95,15 @@ export function ChatPage() {
     setIsTyping(true);
     
     try {
+      // Build context message
+      let contextualMessage = message;
+      if (currentContext.type !== 'all') {
+        contextualMessage = `[Context: ${currentContext.name} - ${currentContext.type}]\n${message}`;
+      }
+      
       // Get AI response from Anthropic via Cloud Function
       const { content, metadata } = await anthropicService.chatWithContext({
-        message,
+        message: contextualMessage,
         attachments,
         sessionId: activeSession.id
       });
@@ -206,7 +212,7 @@ export function ChatPage() {
           <div>
             <h2 className="font-semibold">AI Tutor</h2>
             <p className="text-xs text-gray-600">
-              {activeSession?.subjectId || 'All Subjects'}
+              {currentContext.type === 'all' ? 'All Subjects' : currentContext.name}
             </p>
           </div>
         </div>

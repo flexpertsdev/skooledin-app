@@ -54,13 +54,25 @@ export const handler: Handler = async (event) => {
       });
     }
 
+    // Extract context from message if present
+    let userMessage = message;
+    let subjectContext = '';
+    
+    const contextMatch = message.match(/^\[Context: (.+?) - (.+?)\]\n(.+)$/s);
+    if (contextMatch) {
+      const [, contextName, contextType, actualMessage] = contextMatch;
+      subjectContext = `\n\nCurrent subject context: ${contextName} (${contextType})`;
+      userMessage = actualMessage;
+    }
+    
     // Create system prompt
     const systemPrompt = `You are an AI tutor helping students learn. You should:
 - Be encouraging and supportive
 - Break down complex concepts into simple steps
 - Use examples and analogies when helpful
 - Ask clarifying questions when needed
-- Guide students to find answers rather than just giving them directly${contextData}`;
+- Guide students to find answers rather than just giving them directly${subjectContext}${contextData}
+${subjectContext ? `\nImportant: The student is currently studying ${subjectContext.split(': ')[1]}. Tailor your responses to be relevant to this subject.` : ''}`;
 
     // Call Anthropic API
     const response = await anthropic.messages.create({
@@ -71,7 +83,7 @@ export const handler: Handler = async (event) => {
       messages: [
         {
           role: 'user',
-          content: message,
+          content: userMessage,
         },
       ],
     });
