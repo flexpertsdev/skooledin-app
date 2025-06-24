@@ -12,15 +12,20 @@ import {
   FileText,
   Image,
   File,
-  Bug
+  Bug,
+  Check,
+  X,
+  Save,
+  Copy
 } from 'lucide-react';
 import { Button } from '@components/common/Button';
 import { VoiceRecorder } from '@components/chat/VoiceRecorder';
 import { AttachmentPicker } from '@components/chat/AttachmentPicker';
 import { AttachmentChip } from '@components/chat/AttachmentChip';
 import { ActiveContextBar } from '@components/chat/ActiveContextBar';
+import { SaveMessagesModal } from '@components/chat/SaveMessagesModal';
 import { useChatStore } from '@stores/chat.store';
-import { useNotebookStore } from '@stores/notebook.store';
+import { useNotebookStore } from '@stores/notebook.store.dexie';
 import { useAuthStore } from '@stores/auth';
 import { useContextStore } from '@stores/context.store';
 // Choose between Firebase and Netlify implementations
@@ -35,6 +40,9 @@ export function ChatPage() {
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
   const [showQuickActions, setShowQuickActions] = useState(true);
   const [debugMode, setDebugMode] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
+  const [showSaveModal, setShowSaveModal] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -52,7 +60,7 @@ export function ChatPage() {
     setIsTyping
   } = useChatStore();
   
-  const { addEntry: addNotebookEntry } = useNotebookStore();
+  const { createEntry: addNotebookEntry } = useNotebookStore();
   
   // Create or get active session
   useEffect(() => {
@@ -181,7 +189,6 @@ export function ChatPage() {
     if (!activeSession?.subjectId) return;
     
     await addNotebookEntry({
-      userId: user?.id || 'current-user',
       title: 'AI Generated Note',
       content: message.content,
       type: 'concept',
@@ -201,8 +208,7 @@ export function ChatPage() {
       attachments: [],
       annotations: [],
       status: 'complete',
-      visibility: 'private',
-      version: 1
+      visibility: 'private'
     });
     
     await saveToNotebook(message.id);
@@ -224,32 +230,179 @@ export function ChatPage() {
     setAttachments(attachments.filter(att => att.id !== id));
   };
 
+  const toggleMessageSelection = (messageId: string) => {
+    const newSelected = new Set(selectedMessages);
+    if (newSelected.has(messageId)) {
+      newSelected.delete(messageId);
+    } else {
+      newSelected.add(messageId);
+    }
+    setSelectedMessages(newSelected);
+  };
+
+  const selectAllMessages = () => {
+    const allMessageIds = new Set(chatMessages.map(m => m.id));
+    setSelectedMessages(allMessageIds);
+  };
+
+  const clearSelection = () => {
+    setSelectedMessages(new Set());
+    setSelectionMode(false);
+  };
+
+  const handleSaveSelectedToNotebook = async (options: any) => {
+    const messagesToSave = chatMessages.filter(m => selectedMessages.has(m.id));
+    if (messagesToSave.length === 0) return;
+
+    const { createFromMessages, generateStudyGuide, createEntry } = useNotebookStore.getState();
+    
+    if (options.type === 'study-guide') {
+      await generateStudyGuide({
+        topic: options.title,
+        type: 'summary',
+        subjectId: activeSession?.subjectId || '',
+        gradeLevel: 10,
+        depth: 'intermediate'
+      });
+    } else if (options.type === 'summary') {
+      // Create AI-generated summary
+      const content = messagesToSave.map(msg => {
+        const role = msg.role === 'user' ? 'You' : 'AI';
+        return `${role}: ${msg.content}`;
+      }).join('\n\n');
+      
+      await createEntry({
+        title: options.title,
+        content: `# Summary\n\n${content}\n\n## Key Points\n\n[AI will generate key points]`,
+        type: 'summary',
+        format: 'markdown',
+        subjectId: activeSession?.subjectId,
+        metadata: {
+          isAIGenerated: true,
+          sourceType: 'chat',
+          studyCount: 0,
+          isFavorite: false,
+          isArchived: false
+        }
+      });
+    } else {
+      // Raw chat format
+      messagesToSave.map((msg) => {
+        const role = msg.role === 'user' ? '👤 **You**' : '🤖 **Assistant**';
+        const parts = [role];
+        
+        if (options.includeTimestamps) {
+          parts.push(`- ${new Date(msg.createdAt).toLocaleString()}`);
+        }
+        
+        let messageContent = `\n\n${msg.content}`;
+        
+        if (options.includeMetadata && msg.role === 'assistant' && msg.metadata.thinking) {
+          messageContent += `\n\n> **AI Thinking:** ${msg.metadata.thinking.approach} (${msg.metadata.thinking.complexity})`;
+        }
+        
+        return `### ${parts.join(' ')}${messageContent}`;
+      }).join('\n\n---\n\n');
+      
+      await createFromMessages(messagesToSave, {
+        sourceType: 'chat',
+        isAIGenerated: false,
+        studyCount: 0,
+        isFavorite: false,
+        isArchived: false
+      });
+    }
+
+    clearSelection();
+    setShowSaveModal(false);
+  };
+
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {/* Chat Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-purple-600" />
-          </div>
-          <div>
-            <h2 className="font-semibold">AI Tutor</h2>
-            <p className="text-xs text-gray-600">
-              {currentContext.type === 'all' ? 'All Subjects' : currentContext.name}
-            </p>
-          </div>
+          {selectionMode ? (
+            <>
+              <button
+                onClick={clearSelection}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+              <div>
+                <h2 className="font-semibold">{selectedMessages.size} Selected</h2>
+                <button
+                  onClick={selectAllMessages}
+                  className="text-xs text-purple-600 hover:text-purple-700"
+                >
+                  Select All
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h2 className="font-semibold">AI Tutor</h2>
+                <p className="text-xs text-gray-600">
+                  {currentContext.type === 'all' ? 'All Subjects' : currentContext.name}
+                </p>
+              </div>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setDebugMode(!debugMode)}
-            className={`p-2 hover:bg-gray-100 rounded-lg ${debugMode ? 'bg-purple-100 text-purple-600' : ''}`}
-            title="Toggle debug mode"
-          >
-            <Bug size={20} />
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
-            <MoreVertical size={20} />
-          </button>
+          {selectionMode ? (
+            <>
+              <button
+                onClick={() => setShowSaveModal(true)}
+                disabled={selectedMessages.size === 0}
+                className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                title="Save to Notebook"
+              >
+                <Save size={20} />
+              </button>
+              <button
+                onClick={() => {
+                  const messagesToCopy = chatMessages
+                    .filter(m => selectedMessages.has(m.id))
+                    .map(m => `${m.role === 'user' ? 'You' : 'AI'}: ${m.content}`)
+                    .join('\n\n');
+                  navigator.clipboard.writeText(messagesToCopy);
+                }}
+                disabled={selectedMessages.size === 0}
+                className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                title="Copy Messages"
+              >
+                <Copy size={20} />
+              </button>
+            </>
+          ) : (
+            <>
+              {chatMessages.length > 0 && (
+                <button 
+                  onClick={() => setSelectionMode(true)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  title="Select messages"
+                >
+                  <Check size={20} />
+                </button>
+              )}
+              <button 
+                onClick={() => setDebugMode(!debugMode)}
+                className={`p-2 hover:bg-gray-100 rounded-lg ${debugMode ? 'bg-purple-100 text-purple-600' : ''}`}
+                title="Toggle debug mode"
+              >
+                <Bug size={20} />
+              </button>
+              <button className="p-2 hover:bg-gray-100 rounded-lg">
+                <MoreVertical size={20} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -294,9 +447,24 @@ export function ChatPage() {
             {chatMessages.map(message => (
               <div
                 key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} gap-3`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} gap-3 ${
+                  selectionMode ? 'cursor-pointer' : ''
+                }`}
+                onClick={() => selectionMode && toggleMessageSelection(message.id)}
               >
-                {message.role === 'assistant' && (
+                {selectionMode && (
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedMessages.has(message.id)}
+                      onChange={() => toggleMessageSelection(message.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                    />
+                  </div>
+                )}
+                
+                {message.role === 'assistant' && !selectionMode && (
                   <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
                     {getMessageIcon(message) || <Sparkles className="w-4 h-4 text-purple-600" />}
                   </div>
@@ -395,7 +563,7 @@ export function ChatPage() {
                   )}
                 </div>
                 
-                {message.role === 'user' && (
+                {message.role === 'user' && !selectionMode && (
                   <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-medium text-gray-600">
                       {user?.name?.charAt(0).toUpperCase()}
@@ -527,6 +695,14 @@ export function ChatPage() {
           setShowAttachmentSheet(false);
         }}
         selectedAttachments={attachments}
+      />
+
+      {/* Save Messages Modal */}
+      <SaveMessagesModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        messages={chatMessages.filter(m => selectedMessages.has(m.id))}
+        onSave={handleSaveSelectedToNotebook}
       />
     </div>
   );

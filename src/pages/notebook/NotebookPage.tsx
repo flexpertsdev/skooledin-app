@@ -18,6 +18,8 @@ import {
 import { useNotebookStore } from '@stores/notebook.store.dexie';
 import { useContextStore } from '@stores/context.store';
 import { Button } from '@components/common/Button';
+import { CreateNotebookModal } from '@components/notebook/CreateNotebookModal';
+import { EditNotebookModal } from '@components/notebook/EditNotebookModal';
 import type { NotebookEntry } from '@types';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -26,6 +28,8 @@ export function NotebookPage() {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [showFolders] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<NotebookEntry | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   
   const { currentContext } = useContextStore();
   const {
@@ -69,9 +73,8 @@ export function NotebookPage() {
   
   // Handle selected entry changes
   useEffect(() => {
-    if (selectedEntry) {
-      // TODO: Open entry editor modal
-      console.log('Entry selected:', selectedEntry.id);
+    if (selectedEntry && !showEditModal) {
+      setShowEditModal(true);
     }
   }, [selectedEntry]);
   
@@ -130,8 +133,11 @@ export function NotebookPage() {
   const handleEntryClick = (entry: NotebookEntry) => {
     setSelectedEntry(entry);
     setActiveEntry(entry);
-    // TODO: Open entry editor modal when selectedEntry changes
-    console.log('Selected entry:', entry.id);
+  };
+  
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setSelectedEntry(null);
   };
 
   return (
@@ -140,7 +146,11 @@ export function NotebookPage() {
       <div className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-semibold text-gray-900">My Notebook</h1>
-          <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
+          <Button 
+            size="sm" 
+            className="bg-purple-600 hover:bg-purple-700"
+            onClick={() => setShowCreateModal(true)}
+          >
             <Plus className="w-4 h-4 mr-1" />
             New Note
           </Button>
@@ -254,7 +264,10 @@ export function NotebookPage() {
                   ? 'Try adjusting your search terms'
                   : 'Start saving important concepts from your AI chat sessions'}
               </p>
-              <Button className="bg-purple-600 hover:bg-purple-700">
+              <Button 
+                className="bg-purple-600 hover:bg-purple-700"
+                onClick={() => setShowCreateModal(true)}
+              >
                 Create First Note
               </Button>
             </motion.div>
@@ -371,6 +384,18 @@ export function NotebookPage() {
           </div>
         </div>
       </div>
+      
+      {/* Modals */}
+      <CreateNotebookModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
+      
+      <EditNotebookModal
+        isOpen={showEditModal}
+        entry={selectedEntry}
+        onClose={handleCloseEditModal}
+      />
     </div>
   );
 }
