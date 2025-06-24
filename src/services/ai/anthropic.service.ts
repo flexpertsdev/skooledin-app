@@ -31,6 +31,11 @@ export interface ChatWithContextOptions {
   message: string;
   attachments?: MessageAttachment[];
   sessionId: string;
+  recentMessages?: Array<{
+    role: string;
+    content: string;
+    timestamp: Date;
+  }>;
 }
 
 export interface StudyMaterialsOptions {

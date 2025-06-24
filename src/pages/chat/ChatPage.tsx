@@ -17,6 +17,7 @@ import { Button } from '@components/common/Button';
 import { VoiceRecorder } from '@components/chat/VoiceRecorder';
 import { AttachmentPicker } from '@components/chat/AttachmentPicker';
 import { AttachmentChip } from '@components/chat/AttachmentChip';
+import { ActiveContextBar } from '@components/chat/ActiveContextBar';
 import { useChatStore } from '@stores/chat.store';
 import { useNotebookStore } from '@stores/notebook.store';
 import { useAuthStore } from '@stores/auth';
@@ -101,11 +102,19 @@ export function ChatPage() {
         contextualMessage = `[Context: ${currentContext.name} - ${currentContext.type}]\n${message}`;
       }
       
+      // Get recent messages for context (last 5)
+      const recentMessages = chatMessages.slice(-5).map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.createdAt
+      }));
+      
       // Get AI response from Anthropic via Cloud Function
       const { content, metadata } = await anthropicService.chatWithContext({
         message: contextualMessage,
         attachments,
-        sessionId: activeSession.id
+        sessionId: activeSession.id,
+        recentMessages
       });
       
       // Add AI response
@@ -220,6 +229,13 @@ export function ChatPage() {
           <MoreVertical size={20} />
         </button>
       </div>
+
+      {/* Active Context Bar */}
+      <ActiveContextBar
+        subject={currentContext.name}
+        attachments={attachments}
+        onRemoveAttachment={removeAttachment}
+      />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">

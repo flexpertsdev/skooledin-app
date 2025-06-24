@@ -23,6 +23,7 @@ class NetlifyAnthropicService {
           message: options.message,
           attachments: options.attachments,
           sessionId: options.sessionId,
+          recentMessages: options.recentMessages,
         }),
       });
 
