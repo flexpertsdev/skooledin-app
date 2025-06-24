@@ -7,7 +7,6 @@ import {
   Star,
   StarOff,
   Archive,
-  FolderOpen,
   FileText,
   Hash,
   Sparkles,
@@ -16,7 +15,7 @@ import {
   Beaker,
   Clock
 } from 'lucide-react';
-import { useNotebookStore } from '@stores/notebook.store';
+import { useNotebookStore } from '@stores/notebook.store.dexie';
 import { useContextStore } from '@stores/context.store';
 import { Button } from '@components/common/Button';
 import type { NotebookEntry } from '@types';
@@ -26,22 +25,38 @@ export function NotebookPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [showFolders] = useState(true);
-  const [_selectedEntry, setSelectedEntry] = useState<NotebookEntry | null>(null);
-  const [selectedFolder] = useState<string | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<NotebookEntry | null>(null);
   
   const { currentContext } = useContextStore();
   const {
     entries,
-    folders,
-    searchEntries,
+    searchEntries,  
     filterBySubject,
-    filterByFolder,
-    toggleFavorite,
-    archiveEntry,
-    recordView,
+    updateEntry,
     getRecentEntries,
-    getFavorites
+    setActiveEntry
   } = useNotebookStore();
+  
+  // Helper functions
+  const toggleFavorite = async (id: string) => {
+    const entry = entries.find(e => e.id === id);
+    if (entry) {
+      await updateEntry(id, {
+        metadata: { ...entry.metadata, isFavorite: !entry.metadata.isFavorite }
+      });
+    }
+  };
+  
+  const archiveEntry = async (id: string) => {
+    const entry = entries.find(e => e.id === id);
+    if (entry) {
+      await updateEntry(id, {
+        metadata: { ...entry.metadata, isArchived: true }
+      });
+    }
+  };
+  
+  const getFavorites = () => entries.filter(e => e.metadata.isFavorite);
   
   // Filter entries based on current context
   useEffect(() => {
@@ -51,6 +66,14 @@ export function NotebookPage() {
       filterBySubject(null);
     }
   }, [currentContext, filterBySubject]);
+  
+  // Handle selected entry changes
+  useEffect(() => {
+    if (selectedEntry) {
+      // TODO: Open entry editor modal
+      console.log('Entry selected:', selectedEntry.id);
+    }
+  }, [selectedEntry]);
   
   // Handle search
   useEffect(() => {
@@ -67,13 +90,6 @@ export function NotebookPage() {
     return false;
   });
   
-  // Group entries by folder
-  const entriesByFolder = displayEntries.reduce((acc, entry) => {
-    const folderId = entry.metadata.folderId || 'unfiled';
-    if (!acc[folderId]) acc[folderId] = [];
-    acc[folderId].push(entry);
-    return acc;
-  }, {} as Record<string, NotebookEntry[]>);
   
   const getTypeIcon = (type: NotebookEntry['type']) => {
     const icons = {
@@ -113,7 +129,9 @@ export function NotebookPage() {
   
   const handleEntryClick = (entry: NotebookEntry) => {
     setSelectedEntry(entry);
-    recordView(entry.id);
+    setActiveEntry(entry);
+    // TODO: Open entry editor modal when selectedEntry changes
+    console.log('Selected entry:', entry.id);
   };
 
   return (
@@ -209,25 +227,9 @@ export function NotebookPage() {
                 </button>
               </div>
               
-              {/* Subject Folders */}
+              {/* Subject Folders - temporarily disabled */}
               <div className="space-y-1">
-                {folders.map((folder) => (
-                  <button
-                    key={folder.id}
-                    onClick={() => filterByFolder(folder.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                      selectedFolder === folder.id
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'hover:bg-gray-100'
-                    }`}
-                  >
-                    <FolderOpen className="w-4 h-4" />
-                    <span className="text-sm">{folder.name}</span>
-                    <span className="ml-auto text-xs text-gray-400">
-                      {entriesByFolder[folder.id]?.length || 0}
-                    </span>
-                  </button>
-                ))}
+                {/* Will add folders back later */}
               </div>
             </div>
           </div>

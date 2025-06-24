@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Database, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { initializeDB, db } from '@/lib/db';
 import { useChatStore } from '@/stores/chat.store.dexie';
+import { useNotebookStore } from '@/stores/notebook.store.dexie';
 import { useAuthStore } from '@/stores/auth';
 
 interface MigrationStatus {
@@ -26,7 +27,8 @@ export function DatabaseMigration({ children }: { children: React.ReactNode }) {
   });
   
   const { user } = useAuthStore();
-  const { setUserId, migrateFromLocalStorage } = useChatStore();
+  const { setUserId: setChatUserId, migrateFromLocalStorage: migrateChatData } = useChatStore();
+  const { setUserId: setNotebookUserId, migrateFromLocalStorage: migrateNotebookData } = useNotebookStore();
 
   useEffect(() => {
     async function init() {
@@ -42,11 +44,13 @@ export function DatabaseMigration({ children }: { children: React.ReactNode }) {
                            localStorage.getItem('skooledin-context');
         
         if (hasLocalData && user) {
-          // Set user ID for the store
-          setUserId(user.id);
+          // Set user IDs for the stores
+          setChatUserId(user.id);
+          setNotebookUserId(user.id);
           
-          // Perform migration
-          await migrateFromLocalStorage();
+          // Perform migrations
+          await migrateChatData();
+          await migrateNotebookData();
           
           // Get stats
           const messageCount = await db.chatMessages.where('userId').equals(user.id).count();
@@ -66,7 +70,10 @@ export function DatabaseMigration({ children }: { children: React.ReactNode }) {
           });
         } else {
           // No migration needed
-          if (user) setUserId(user.id);
+          if (user) {
+            setChatUserId(user.id);
+            setNotebookUserId(user.id);
+          }
           setStatus(prev => ({
             ...prev,
             initialized: true,
@@ -86,7 +93,7 @@ export function DatabaseMigration({ children }: { children: React.ReactNode }) {
     }
 
     init();
-  }, [user, setUserId, migrateFromLocalStorage]);
+  }, [user, setChatUserId, setNotebookUserId, migrateChatData, migrateNotebookData]);
 
   // Show migration status only if migrating or there's an error
   if (status.migrating) {
