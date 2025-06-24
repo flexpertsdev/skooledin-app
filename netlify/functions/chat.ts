@@ -1,11 +1,22 @@
 import { Handler } from '@netlify/functions';
 import Anthropic from '@anthropic-ai/sdk';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 export const handler: Handler = async (event) => {
+  // Check if API key is available
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error('ANTHROPIC_API_KEY is not set in environment variables');
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ 
+        error: 'Configuration error',
+        details: 'Anthropic API key is not configured. Please set ANTHROPIC_API_KEY environment variable.'
+      }),
+    };
+  }
+
+  const anthropic = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  });
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
