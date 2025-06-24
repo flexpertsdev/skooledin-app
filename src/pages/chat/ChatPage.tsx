@@ -21,7 +21,7 @@ import { useChatStore } from '@stores/chat.store';
 import { useNotebookStore } from '@stores/notebook.store';
 import { useAuthStore } from '@stores/auth';
 import { useContextStore } from '@stores/context.store';
-import { aiService } from '../../services/ai.service';
+import { anthropicService } from '@/services/ai/anthropic.service';
 import type { ChatMessage, MessageAttachment } from '@types';
 
 export function ChatPage() {
@@ -43,7 +43,8 @@ export function ChatPage() {
     createSession,
     sendMessage,
     addAIResponse,
-    saveToNotebook
+    saveToNotebook,
+    setIsTyping
   } = useChatStore();
   
   const { addEntry: addNotebookEntry } = useNotebookStore();
@@ -88,12 +89,36 @@ export function ChatPage() {
     // Send user message
     await sendMessage(activeSession.id, message, attachments);
     
-    // Generate AI response
-    const thinking = await aiService.generateThinking(message);
-    const response = 'I understand you need help. Let me break this down for you...';
+    // Show typing indicator
+    setIsTyping(true);
     
-    // Add AI response
-    addAIResponse(activeSession.id, response, thinking);
+    try {
+      // Get AI response from Anthropic via Cloud Function
+      const { content, metadata } = await anthropicService.chatWithContext({
+        message,
+        attachments,
+        sessionId: activeSession.id
+      });
+      
+      // Add AI response
+      addAIResponse(activeSession.id, content, metadata?.thinking);
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      // Fallback response
+      addAIResponse(
+        activeSession.id, 
+        "I'm having trouble connecting right now. Please try again in a moment.",
+        {
+          steps: [],
+          duration: 0,
+          complexity: 'simple',
+          approach: 'Error response'
+        }
+      );
+    } finally {
+      setIsTyping(false);
+    }
+    
     setAttachments([]); // Clear attachments after sending
   };
 

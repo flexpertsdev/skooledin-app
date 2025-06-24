@@ -29,6 +29,7 @@ interface ChatState {
   // Utility
   clearChat: (sessionId: string) => void;
   getRecentSessions: (limit?: number) => ChatSession[];
+  setIsTyping: (typing: boolean) => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -264,6 +265,10 @@ export const useChatStore = create<ChatState>()(
         return get().sessions
           .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
           .slice(0, limit);
+      },
+      
+      setIsTyping: (typing) => {
+        set({ isTyping: typing });
       }
     }),
     {
