@@ -2,7 +2,6 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/config/firebase';
 import type { 
   NotebookEntry, 
-  ChatMessage, 
   MessageAttachment,
   AIThinking 
 } from '@/types';

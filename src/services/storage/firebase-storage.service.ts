@@ -149,11 +149,11 @@ class FirebaseStorageService {
           id: itemRef.name,
           name: metadata.customMetadata?.originalName || itemRef.name,
           url,
-          type: metadata.contentType || 'unknown',
+          type: this.getFileTypeFromMimeType(metadata.contentType || ''),
           size: metadata.size,
+          mimeType: metadata.contentType || 'application/octet-stream',
           uploadedAt: new Date(metadata.timeCreated),
-          path: itemRef.fullPath,
-          metadata: metadata.customMetadata || {}
+          uploadedBy: metadata.customMetadata?.uploadedBy || auth.currentUser?.uid || ''
         });
       }
       
@@ -170,11 +170,11 @@ class FirebaseStorageService {
       id: `file-${Date.now()}`,
       name: uploadResult.metadata.name,
       url: uploadResult.url,
-      type: uploadResult.metadata.type,
+      type: this.getFileTypeFromMimeType(uploadResult.metadata.type),
       size: uploadResult.metadata.size,
+      mimeType: uploadResult.metadata.type,
       uploadedAt: uploadResult.metadata.uploadedAt,
-      path: uploadResult.path,
-      metadata: {}
+      uploadedBy: auth.currentUser?.uid || ''
     };
   }
 
@@ -216,6 +216,38 @@ class FirebaseStorageService {
       console.error('Generate public URL error:', error);
       throw error;
     }
+  }
+
+  // Convert MIME type to FileAttachment type
+  private getFileTypeFromMimeType(mimeType: string): 'pdf' | 'image' | 'document' | 'video' | 'audio' {
+    if (mimeType === 'application/pdf') {
+      return 'pdf';
+    }
+    
+    if (mimeType.startsWith('image/')) {
+      return 'image';
+    }
+    
+    if (mimeType.startsWith('video/')) {
+      return 'video';
+    }
+    
+    if (mimeType.startsWith('audio/')) {
+      return 'audio';
+    }
+    
+    // Document types (Word, etc.)
+    if (
+      mimeType === 'application/msword' ||
+      mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      mimeType.includes('document') ||
+      mimeType.includes('text/')
+    ) {
+      return 'document';
+    }
+    
+    // Default to document for unknown types
+    return 'document';
   }
 }
 

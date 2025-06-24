@@ -6,13 +6,12 @@ import {
   updateProfile,
   sendPasswordResetEmail,
   sendEmailVerification,
-  type User as FirebaseUser,
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/config/firebase';
-import type { User, UserRole } from '@/types';
+import type { User, UserRole, Student, Teacher, Parent, Admin } from '@/types';
 
 export interface AuthCredentials {
   email: string;
@@ -22,119 +21,171 @@ export interface AuthCredentials {
 export interface SignUpData extends AuthCredentials {
   name: string;
   role: UserRole;
-  gradeLevel?: number;
 }
 
 class FirebaseAuthService {
+  // Current user state
   private currentUser: User | null = null;
 
-  constructor() {
-    // Listen to auth state changes
-    onAuthStateChanged(auth, async (firebaseUser) => {
+  // Initialize auth state listener
+  initAuthListener(callback: (user: User | null) => void) {
+    return onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        this.currentUser = await this.getUserData(firebaseUser.uid);
+        // Fetch user data from Firestore
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (userDoc.exists()) {
+          this.currentUser = userDoc.data() as User;
+          callback(this.currentUser);
+        } else {
+          callback(null);
+        }
       } else {
         this.currentUser = null;
+        callback(null);
       }
     });
   }
 
-  // Sign up new user
+  // Sign up with email and password
   async signUp(data: SignUpData): Promise<User> {
     try {
       // Create Firebase auth user
-      const userCredential = await createUserWithEmailAndPassword(
+      const { user: firebaseUser } = await createUserWithEmailAndPassword(
         auth,
         data.email,
         data.password
       );
-      
-      const firebaseUser = userCredential.user;
-      
+
       // Update display name
-      await updateProfile(firebaseUser, {
-        displayName: data.name
-      });
+      await updateProfile(firebaseUser, { displayName: data.name });
       
-      // Send email verification
+      // Send verification email
       await sendEmailVerification(firebaseUser);
       
-      // Create user document in Firestore
-      const userData: User = {
+      // Create user document in Firestore with proper structure based on role
+      const baseUserData = {
         id: firebaseUser.uid,
         email: data.email,
         name: data.name,
-        role: data.role,
-        avatar: null,
-        status: 'active',
-        isVerified: false,
+        isActive: true,
         preferences: {
-          theme: 'light',
+          theme: 'light' as const,
           language: 'en',
           notifications: {
             email: true,
             push: true,
-            sms: false
+            sms: false,
+            inApp: true,
+            digest: 'weekly' as const,
+            types: {
+              assignments: true,
+              grades: true,
+              messages: true,
+              reminders: true
+            }
+          },
+          privacy: {
+            profileVisibility: 'school' as const,
+            shareProgress: true,
+            allowAnalytics: true
           }
-        },
-        metadata: {
-          lastActive: new Date(),
-          loginCount: 1,
-          platform: 'web'
         },
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      
-      // Add role-specific data
-      if (data.role === 'student' && data.gradeLevel) {
-        (userData as any).gradeLevel = data.gradeLevel;
-        (userData as any).subjects = [];
-        (userData as any).learningProfile = {
-          style: 'visual',
-          pace: 'moderate',
-          strengths: [],
-          challenges: []
-        };
+
+      let userData: User;
+
+      switch (data.role) {
+        case 'student':
+          userData = {
+            ...baseUserData,
+            role: 'student',
+            gradeLevel: 10,
+            schoolId: 'default-school',
+            enrolledClasses: [],
+            parentIds: [],
+            learningProfile: {
+              learningStyle: 'mixed',
+              pace: 'normal',
+              strengths: [],
+              weaknesses: [],
+              interests: [],
+              goals: []
+            }
+          } as Student;
+          break;
+        case 'teacher':
+          userData = {
+            ...baseUserData,
+            role: 'teacher',
+            schoolId: 'default-school',
+            subjectIds: [],
+            classIds: [],
+            qualifications: []
+          } as Teacher;
+          break;
+        case 'parent':
+          userData = {
+            ...baseUserData,
+            role: 'parent',
+            childrenIds: [],
+            subscription: {
+              id: `sub-${Date.now()}`,
+              plan: 'free',
+              status: 'active',
+              startedAt: new Date(),
+              features: []
+            }
+          } as Parent;
+          break;
+        case 'admin':
+          userData = {
+            ...baseUserData,
+            role: 'admin',
+            permissions: []
+          } as Admin;
+          break;
+        default:
+          throw new Error('Invalid role');
       }
-      
-      // Save to Firestore
-      await setDoc(doc(db, 'users', firebaseUser.uid), {
-        ...userData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+
+      await setDoc(doc(db, 'users', firebaseUser.uid), userData);
       
       this.currentUser = userData;
       return userData;
-    } catch (error) {
-      console.error('SignUp error:', error);
-      throw error;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to create account');
     }
   }
 
-  // Sign in existing user
+  // Sign in with email and password
   async signIn(credentials: AuthCredentials): Promise<User> {
     try {
-      const userCredential = await signInWithEmailAndPassword(
+      const { user: firebaseUser } = await signInWithEmailAndPassword(
         auth,
         credentials.email,
         credentials.password
       );
+
+      // Fetch user data
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      if (!userDoc.exists()) {
+        throw new Error('User data not found');
+      }
+
+      const userData = userDoc.data() as User;
       
-      const userData = await this.getUserData(userCredential.user.uid);
-      
-      // Update last active
-      await updateDoc(doc(db, 'users', userCredential.user.uid), {
-        'metadata.lastActive': serverTimestamp(),
-        'metadata.loginCount': (userData.metadata?.loginCount || 0) + 1
+      // Update last login
+      await updateDoc(doc(db, 'users', firebaseUser.uid), {
+        lastLoginAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
-      
+
       this.currentUser = userData;
       return userData;
-    } catch (error) {
-      console.error('SignIn error:', error);
-      throw error;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to sign in');
     }
   }
 
@@ -142,51 +193,68 @@ class FirebaseAuthService {
   async signInWithGoogle(): Promise<User> {
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      
+      const { user: firebaseUser } = await signInWithPopup(auth, provider);
+
       // Check if user exists
-      let userData = await this.getUserData(result.user.uid).catch(() => null);
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
       
-      if (!userData) {
-        // Create new user
-        userData = {
-          id: result.user.uid,
-          email: result.user.email!,
-          name: result.user.displayName || 'User',
-          role: 'student', // Default role
-          avatar: result.user.photoURL,
-          status: 'active',
-          isVerified: result.user.emailVerified,
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as User;
+        this.currentUser = userData;
+        return userData;
+      } else {
+        // Create new user (default to student role)
+        const newUser: Student = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          name: firebaseUser.displayName || 'User',
+          avatar: firebaseUser.photoURL || undefined,
+          role: 'student',
+          isActive: true,
+          gradeLevel: 10,
+          schoolId: 'default-school',
+          enrolledClasses: [],
+          parentIds: [],
+          learningProfile: {
+            learningStyle: 'mixed',
+            pace: 'normal',
+            strengths: [],
+            weaknesses: [],
+            interests: [],
+            goals: []
+          },
           preferences: {
             theme: 'light',
             language: 'en',
             notifications: {
               email: true,
               push: true,
-              sms: false
+              sms: false,
+              inApp: true,
+              digest: 'weekly',
+              types: {
+                assignments: true,
+                grades: true,
+                messages: true,
+                reminders: true
+              }
+            },
+            privacy: {
+              profileVisibility: 'school',
+              shareProgress: true,
+              allowAnalytics: true
             }
-          },
-          metadata: {
-            lastActive: new Date(),
-            loginCount: 1,
-            platform: 'web'
           },
           createdAt: new Date(),
           updatedAt: new Date()
         };
-        
-        await setDoc(doc(db, 'users', result.user.uid), {
-          ...userData,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
+
+        await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+        this.currentUser = newUser;
+        return newUser;
       }
-      
-      this.currentUser = userData;
-      return userData;
-    } catch (error) {
-      console.error('Google SignIn error:', error);
-      throw error;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to sign in with Google');
     }
   }
 
@@ -195,9 +263,17 @@ class FirebaseAuthService {
     try {
       await signOut(auth);
       this.currentUser = null;
-    } catch (error) {
-      console.error('SignOut error:', error);
-      throw error;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to sign out');
+    }
+  }
+
+  // Reset password
+  async resetPassword(email: string): Promise<void> {
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to send reset email');
     }
   }
 
@@ -206,63 +282,16 @@ class FirebaseAuthService {
     return this.currentUser;
   }
 
-  // Get user data from Firestore
-  private async getUserData(uid: string): Promise<User> {
-    const userDoc = await getDoc(doc(db, 'users', uid));
-    
-    if (!userDoc.exists()) {
-      throw new Error('User data not found');
-    }
-    
-    return {
-      id: uid,
-      ...userDoc.data()
-    } as User;
-  }
-
-  // Reset password
-  async resetPassword(email: string): Promise<void> {
-    try {
-      await sendPasswordResetEmail(auth, email);
-    } catch (error) {
-      console.error('Password reset error:', error);
-      throw error;
-    }
-  }
-
   // Update user profile
-  async updateUserProfile(updates: Partial<User>): Promise<void> {
-    if (!this.currentUser) {
-      throw new Error('No user logged in');
-    }
-    
+  async updateUserProfile(userId: string, updates: Partial<User>): Promise<void> {
     try {
-      await updateDoc(doc(db, 'users', this.currentUser.id), {
+      await updateDoc(doc(db, 'users', userId), {
         ...updates,
         updatedAt: serverTimestamp()
       });
-      
-      // Update local user data
-      this.currentUser = {
-        ...this.currentUser,
-        ...updates
-      };
-    } catch (error) {
-      console.error('Update profile error:', error);
-      throw error;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to update profile');
     }
-  }
-
-  // Listen to auth state changes
-  onAuthStateChange(callback: (user: User | null) => void): () => void {
-    return onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userData = await this.getUserData(firebaseUser.uid);
-        callback(userData);
-      } else {
-        callback(null);
-      }
-    });
   }
 }
 
