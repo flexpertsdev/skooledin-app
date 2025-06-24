@@ -21,7 +21,9 @@ import { useChatStore } from '@stores/chat.store';
 import { useNotebookStore } from '@stores/notebook.store';
 import { useAuthStore } from '@stores/auth';
 import { useContextStore } from '@stores/context.store';
-import { anthropicService } from '@/services/ai/anthropic.service';
+// Choose between Firebase and Netlify implementations
+// import { anthropicService } from '@/services/ai/anthropic.service'; // Firebase Cloud Functions
+import { netlifyAnthropicService as anthropicService } from '@/services/ai/netlify-anthropic.service'; // Netlify Functions
 import type { ChatMessage, MessageAttachment } from '@types';
 
 export function ChatPage() {
