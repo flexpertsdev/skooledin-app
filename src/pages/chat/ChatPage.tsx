@@ -24,10 +24,12 @@ import { AttachmentPicker } from '@components/chat/AttachmentPicker';
 import { AttachmentChip } from '@components/chat/AttachmentChip';
 import { ActiveContextBar } from '@components/chat/ActiveContextBar';
 import { SaveMessagesModal } from '@components/chat/SaveMessagesModal';
+import { ProactiveSuggestions } from '@components/chat/ProactiveSuggestions';
 import { useChatStore } from '@stores/chat.store';
 import { useNotebookStore } from '@stores/notebook.store.dexie';
 import { useAuthStore } from '@stores/auth';
 import { useContextStore } from '@stores/context.store';
+import { studyGuideService } from '@/services/ai/study-guide.service';
 // Choose between Firebase and Netlify implementations
 // import { anthropicService } from '@/services/ai/anthropic.service'; // Firebase Cloud Functions
 import { netlifyAnthropicService as anthropicService } from '@/services/ai/netlify-anthropic.service'; // Netlify Functions
@@ -43,6 +45,8 @@ export function ChatPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [minimizeSuggestions, setMinimizeSuggestions] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -254,15 +258,22 @@ export function ChatPage() {
     const messagesToSave = chatMessages.filter(m => selectedMessages.has(m.id));
     if (messagesToSave.length === 0) return;
 
-    const { createFromMessages, generateStudyGuide, createEntry } = useNotebookStore.getState();
+    const { createFromMessages, createEntry } = useNotebookStore.getState();
     
     if (options.type === 'study-guide') {
-      await generateStudyGuide({
+      // Extract context from selected messages
+      const context = messagesToSave
+        .map(msg => `${msg.role === 'user' ? 'Question' : 'Answer'}: ${msg.content}`)
+        .join('\n\n');
+      
+      await studyGuideService.generateStudyGuide({
         topic: options.title,
         type: 'summary',
         subjectId: activeSession?.subjectId || '',
         gradeLevel: 10,
-        depth: 'intermediate'
+        depth: 'intermediate',
+        includeExamples: true,
+        context
       });
     } else if (options.type === 'summary') {
       // Create AI-generated summary
@@ -397,6 +408,13 @@ export function ChatPage() {
                 title="Toggle debug mode"
               >
                 <Bug size={20} />
+              </button>
+              <button 
+                onClick={() => setShowSuggestions(!showSuggestions)}
+                className={`p-2 hover:bg-gray-100 rounded-lg ${showSuggestions ? 'bg-purple-100 text-purple-600' : ''}`}
+                title="Toggle AI suggestions"
+              >
+                <Lightbulb size={20} />
               </button>
               <button className="p-2 hover:bg-gray-100 rounded-lg">
                 <MoreVertical size={20} />
@@ -704,6 +722,16 @@ export function ChatPage() {
         messages={chatMessages.filter(m => selectedMessages.has(m.id))}
         onSave={handleSaveSelectedToNotebook}
       />
+
+      {/* Proactive AI Suggestions */}
+      {showSuggestions && (
+        <ProactiveSuggestions
+          messages={chatMessages.map(m => ({ role: m.role, content: m.content }))}
+          currentTopic={currentContext.type === 'subject' ? currentContext.name : undefined}
+          isMinimized={minimizeSuggestions}
+          onToggle={() => setMinimizeSuggestions(!minimizeSuggestions)}
+        />
+      )}
     </div>
   );
 }

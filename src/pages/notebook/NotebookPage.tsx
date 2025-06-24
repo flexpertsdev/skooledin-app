@@ -13,13 +13,18 @@ import {
   Calculator,
   Languages,
   Beaker,
-  Clock
+  Clock,
+  Upload,
+  Camera
 } from 'lucide-react';
 import { useNotebookStore } from '@stores/notebook.store.dexie';
 import { useContextStore } from '@stores/context.store';
 import { Button } from '@components/common/Button';
 import { CreateNotebookModal } from '@components/notebook/CreateNotebookModal';
 import { EditNotebookModal } from '@components/notebook/EditNotebookModal';
+import { StudyGuideModal } from '@components/notebook/StudyGuideModal';
+import { PDFUploadModal } from '@components/notebook/PDFUploadModal';
+import { PhotoUploadModal } from '@components/notebook/PhotoUploadModal';
 import type { NotebookEntry } from '@types';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -30,6 +35,9 @@ export function NotebookPage() {
   const [selectedEntry, setSelectedEntry] = useState<NotebookEntry | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showStudyGuideModal, setShowStudyGuideModal] = useState(false);
+  const [showPDFModal, setShowPDFModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
   
   const { currentContext } = useContextStore();
   const {
@@ -146,14 +154,40 @@ export function NotebookPage() {
       <div className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-semibold text-gray-900">My Notebook</h1>
-          <Button 
-            size="sm" 
-            className="bg-purple-600 hover:bg-purple-700"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            New Note
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant="ghost"
+              onClick={() => setShowPhotoModal(true)}
+            >
+              <Camera className="w-4 h-4 mr-1" />
+              Photo
+            </Button>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              onClick={() => setShowPDFModal(true)}
+            >
+              <Upload className="w-4 h-4 mr-1" />
+              PDF
+            </Button>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              onClick={() => setShowStudyGuideModal(true)}
+            >
+              <Sparkles className="w-4 h-4 mr-1" />
+              Study Guide
+            </Button>
+            <Button 
+              size="sm" 
+              className="bg-purple-600 hover:bg-purple-700"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              New Note
+            </Button>
+          </div>
         </div>
         
         {/* Search */}
@@ -395,6 +429,21 @@ export function NotebookPage() {
         isOpen={showEditModal}
         entry={selectedEntry}
         onClose={handleCloseEditModal}
+      />
+      
+      <StudyGuideModal
+        isOpen={showStudyGuideModal}
+        onClose={() => setShowStudyGuideModal(false)}
+      />
+      
+      <PDFUploadModal
+        isOpen={showPDFModal}
+        onClose={() => setShowPDFModal(false)}
+      />
+      
+      <PhotoUploadModal
+        isOpen={showPhotoModal}
+        onClose={() => setShowPhotoModal(false)}
       />
     </div>
   );

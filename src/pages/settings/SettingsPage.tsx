@@ -1,10 +1,13 @@
-import { ChevronRight, User, Bell, Shield, CreditCard, HelpCircle, LogOut } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronRight, User, Bell, Shield, CreditCard, HelpCircle, LogOut, HardDrive } from 'lucide-react';
 import { useAuthStore } from '@stores/auth';
 import { useNavigate } from 'react-router-dom';
+import { StorageManager } from '@components/settings/StorageManager';
 
 export function SettingsPage() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [showStorageManager, setShowStorageManager] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -18,6 +21,12 @@ export function SettingsPage() {
         { icon: User, label: 'Profile', onClick: () => {} },
         { icon: Bell, label: 'Notifications', onClick: () => {} },
         { icon: Shield, label: 'Privacy & Security', onClick: () => {} },
+      ]
+    },
+    {
+      title: 'Data & Storage',
+      items: [
+        { icon: HardDrive, label: 'Storage Manager', onClick: () => setShowStorageManager(true) },
       ]
     },
     {
@@ -93,6 +102,12 @@ export function SettingsPage() {
             <span className="flex-1 text-left">Log Out</span>
           </button>
         </div>
+
+        {/* Storage Manager Modal */}
+        <StorageManager
+          isOpen={showStorageManager}
+          onClose={() => setShowStorageManager(false)}
+        />
       </div>
     </div>
   );

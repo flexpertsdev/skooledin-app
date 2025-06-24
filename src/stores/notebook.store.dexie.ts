@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { notebookDBService } from '@/services/db/notebook-db.service';
 import { db } from '@/lib/db';
+import { studyGuideService } from '@/services/ai/study-guide.service';
 import type { 
   NotebookEntry, 
   NotebookMetadata,
@@ -9,7 +10,7 @@ import type {
   NoteType
 } from '@/types';
 
-interface StudyGuideRequest {
+export interface StudyGuideRequest {
   topic: string;
   type: 'outline' | 'flashcards' | 'summary' | 'practice_questions' | 'mind_map';
   gradeLevel?: number;
@@ -234,23 +235,43 @@ export const useNotebookStore = create<NotebookState>()(
     },
     
     generateStudyGuide: async (request) => {
-      // This will be implemented when we create the Netlify function
-      // For now, create a placeholder
-      return get().createEntry({
-        title: `Study Guide: ${request.topic}`,
-        content: `# ${request.topic}\n\nGenerating study guide...`,
-        type: 'summary',
-        subjectId: request.subjectId,
-        metadata: {
-          isAIGenerated: true,
-          sourceType: 'manual',
-          gradeLevel: request.gradeLevel,
-          studyCount: 0,
-          isFavorite: false,
-          isArchived: false,
-          wordCount: 0
-        }
-      });
+      set({ isLoading: true });
+      
+      try {
+        const response = await studyGuideService.generateStudyGuide(request);
+        
+        // Map study guide type to notebook entry type
+        const entryTypeMap: Record<string, NoteType> = {
+          'outline': 'summary',
+          'flashcards': 'flashcard',
+          'summary': 'summary',
+          'practice_questions': 'quiz',
+          'mind_map': 'concept'
+        };
+        
+        const entry = await get().createEntry({
+          title: `Study Guide: ${request.topic}`,
+          content: response.content,
+          type: entryTypeMap[request.type] || 'summary',
+          subjectId: request.subjectId,
+          metadata: {
+            isAIGenerated: true,
+            sourceType: 'manual',
+            gradeLevel: request.gradeLevel || 10,
+            studyCount: 0,
+            isFavorite: false,
+            isArchived: false,
+            wordCount: response.metadata.wordCount
+          }
+        });
+        
+        return entry;
+      } catch (error) {
+        console.error('Failed to generate study guide:', error);
+        throw error;
+      } finally {
+        set({ isLoading: false });
+      }
     },
     
     getRecentEntries: (limit = 10) => {
