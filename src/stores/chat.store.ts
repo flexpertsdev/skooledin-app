@@ -19,8 +19,8 @@ interface ChatState {
   deleteSession: (sessionId: string) => void;
   
   // Message Actions
-  sendMessage: (sessionId: string, content: string, attachments?: MessageAttachment[]) => Promise<void>;
-  addAIResponse: (sessionId: string, content: string, thinking?: AIThinking) => void;
+  sendMessage: (sessionId: string, content: string, attachments?: MessageAttachment[], debugInfo?: any) => Promise<void>;
+  addAIResponse: (sessionId: string, content: string, thinking?: AIThinking, debugInfo?: any) => void;
   updateMessageStatus: (sessionId: string, messageId: string, status: ChatMessage['status']) => void;
   
   // Notebook Integration
@@ -130,7 +130,7 @@ export const useChatStore = create<ChatState>()(
         });
       },
       
-      sendMessage: async (sessionId, content, attachments = []) => {
+      sendMessage: async (sessionId, content, attachments = [], debugInfo) => {
         const message: ChatMessage = {
           id: Date.now().toString(),
           sessionId,
@@ -138,7 +138,7 @@ export const useChatStore = create<ChatState>()(
           role: 'user',
           status: 'sending',
           attachments: attachments || [],
-          metadata: {},
+          metadata: debugInfo ? { debug: debugInfo } : {},
           isEdited: false,
           createdAt: new Date(),
           updatedAt: new Date()
@@ -178,7 +178,7 @@ export const useChatStore = create<ChatState>()(
         }));
       },
       
-      addAIResponse: (sessionId, content, thinking) => {
+      addAIResponse: (sessionId, content, thinking, debugInfo) => {
         const aiMessage: ChatMessage = {
           id: Date.now().toString(),
           sessionId,
@@ -187,7 +187,8 @@ export const useChatStore = create<ChatState>()(
           status: 'delivered',
           attachments: [],
           metadata: {
-            thinking
+            thinking,
+            ...(debugInfo && { debug: debugInfo })
           },
           isEdited: false,
           createdAt: new Date(),

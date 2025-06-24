@@ -11,7 +11,8 @@ import {
   Calculator,
   FileText,
   Image,
-  File
+  File,
+  Bug
 } from 'lucide-react';
 import { Button } from '@components/common/Button';
 import { VoiceRecorder } from '@components/chat/VoiceRecorder';
@@ -33,6 +34,7 @@ export function ChatPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
   const [showQuickActions, setShowQuickActions] = useState(true);
+  const [debugMode, setDebugMode] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -89,8 +91,8 @@ export function ChatPage() {
     
     if (!activeSession) return;
     
-    // Send user message
-    await sendMessage(activeSession.id, message, attachments);
+    // Send user message with debug info
+    await sendMessage(activeSession.id, message, attachments, debugMode ? debugInfo : undefined);
     
     // Show typing indicator
     setIsTyping(true);
@@ -101,6 +103,15 @@ export function ChatPage() {
       if (currentContext.type !== 'all') {
         contextualMessage = `[Context: ${currentContext.name} - ${currentContext.type}]\n${message}`;
       }
+      
+      // Store debug info
+      const debugInfo = {
+        sentContext: contextualMessage,
+        subject: currentContext.name,
+        type: currentContext.type,
+        messageCount: recentMessages.length,
+        timestamp: new Date().toISOString()
+      };
       
       // Get recent messages for context (last 5)
       const recentMessages = chatMessages.slice(-5).map(msg => ({
@@ -117,8 +128,11 @@ export function ChatPage() {
         recentMessages
       });
       
-      // Add AI response
-      addAIResponse(activeSession.id, content, metadata?.thinking);
+      // Add AI response with debug info
+      addAIResponse(activeSession.id, content, metadata?.thinking, debugMode ? {
+        ...debugInfo,
+        responseMetadata: metadata
+      } : undefined);
     } catch (error) {
       console.error('Error getting AI response:', error);
       // Fallback response
@@ -225,9 +239,18 @@ export function ChatPage() {
             </p>
           </div>
         </div>
-        <button className="p-2 hover:bg-gray-100 rounded-lg">
-          <MoreVertical size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setDebugMode(!debugMode)}
+            className={`p-2 hover:bg-gray-100 rounded-lg ${debugMode ? 'bg-purple-100 text-purple-600' : ''}`}
+            title="Toggle debug mode"
+          >
+            <Bug size={20} />
+          </button>
+          <button className="p-2 hover:bg-gray-100 rounded-lg">
+            <MoreVertical size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Active Context Bar */}
@@ -334,6 +357,22 @@ export function ChatPage() {
                           {message.metadata.thinking.complexity} complexity
                         </span>
                       </div>
+                      
+                      {/* Debug Info */}
+                      {debugMode && message.metadata.debug && (
+                        <div className="mt-2 p-2 bg-gray-50 rounded text-xs font-mono">
+                          <div className="text-gray-600 mb-1">🐛 Debug Info:</div>
+                          <div className="text-gray-700">
+                            <div>Context sent: {message.metadata.debug.sentContext?.split('\n')[0]}</div>
+                            <div>Subject: {message.metadata.debug.subject}</div>
+                            <div>Type: {message.metadata.debug.type}</div>
+                            <div>Messages included: {message.metadata.debug.messageCount}</div>
+                            {message.metadata.debug.responseMetadata && (
+                              <div>Approach: {message.metadata.debug.responseMetadata.thinking?.approach}</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       
                       {/* Save to Notebook */}
                       {!message.metadata.isSavedToNotebook && (

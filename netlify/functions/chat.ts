@@ -113,8 +113,8 @@ ${conversationContext ? '\nBuild upon the conversation above and maintain contin
           },
         ],
         duration: Date.now(),
-        complexity: message.length > 100 ? 'complex' : 'moderate',
-        approach: 'Educational response',
+        complexity: userMessage.length > 100 ? 'complex' : userMessage.length > 50 ? 'moderate' : 'simple',
+        approach: subjectContext ? `${contextName} tutoring` : 'General educational response',
       },
     };
 
